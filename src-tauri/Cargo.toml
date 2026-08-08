@@ -1,0 +1,20 @@
+[package]
+name = "localforge-ai-v2"
+version = "0.1.0"
+description = "A modern local-first AI workspace"
+authors = ["rangzacap4899-maker"]
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "localforge_ai_v2_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.5", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+tauri = { version = "2.11", features = [] }
+tauri-plugin-shell = "2"
+uuid = { version = "1", features = ["v4"] }
