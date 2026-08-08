@@ -85,7 +85,6 @@ export default function App() {
         </div>
         <StatusBar backendOnline={backendOnline} llamaOnline={llamaOnline} />
       </div>
-      <div className="running-toast"><i className={backendOnline ? "online" : ""} />LocalForge is running locally · Port 1420</div>
     </div>
   );
 }
