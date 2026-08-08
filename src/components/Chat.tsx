@@ -1,81 +1,72 @@
+import { Bot, FileCode2, Image, Mic, Paperclip, Send, Square, Terminal, X } from "lucide-react";
 import { useRef, type FormEvent, type KeyboardEvent } from "react";
 import type { ChatMessage } from "../types";
-import { Icon } from "./Icon";
 
 interface ChatProps {
   messages: ChatMessage[];
   input: string;
   busy: boolean;
-  llamaOnline: boolean;
   onInput: (value: string) => void;
   onSend: () => void;
   onStop: () => void;
 }
 
-const suggestions = [
-  ["code", "สร้างโปรเจกต์", "ช่วยวางโครงเว็บแอปใหม่"],
-  ["files", "อ่าน Workspace", "สรุปไฟล์และสถาปัตยกรรม"],
-  ["spark", "ถามโมเดล", "อธิบายโค้ดหรือช่วยแก้บั๊ก"],
-] as const;
+function DemoConversation() {
+  return (
+    <div className="demo-conversation">
+      <div className="chat-date"><span />วันนี้ · 10:42 AM<span /></div>
+      <article className="demo-user">
+        <p>ช่วยแก้บั๊ก <code>useEffect</code> ที่ทำให้ infinite loop หน่อย ในไฟล์ <code>App.tsx</code> มันเรียก API ซ้ำไม่หยุดเลย</p>
+        <small>12 tokens · 10:42 <b>ME</b></small>
+      </article>
+      <article className="demo-assistant">
+        <div className="assistant-mark"><Bot size={14} /></div>
+        <div className="assistant-content">
+          <div className="thinking"><i /><i /><i />Thinking · วิเคราะห์ dependency array · 2.1s</div>
+          <div className="answer-card">
+            <p>เจอสาเหตุแล้ว — คุณใส่ <code>fetchData</code> ที่ถูกสร้างใหม่ทุก render ลงใน deps ทำให้ loop</p>
+            <p className="muted">วิธีแก้มี 2 แบบ: ใช้ <code>useCallback</code> หรือย้ายฟังก์ชันเข้าไปใน effect เลย แบบที่ 2 จะ clean กว่า</p>
+            <div className="code-preview">
+              <header><span><FileCode2 size={11} />App.tsx <b>FIXED</b></span><button>Copy</button></header>
+              <pre><span className="comment">// Before  ❌ infinite</span>{"\n"}<span className="purple">useEffect</span>(() =&gt; &#123;{"\n"}  <span className="green">fetchData</span>(){"\n"}&#125;, [<span className="amber">fetchData</span>]){"\n\n"}<span className="comment">// After  ✅ stable</span>{"\n"}<span className="purple">useEffect</span>(() =&gt; &#123;{"\n"}  <span className="purple">const</span> load = <span className="purple">async</span> () =&gt; &#123;{"\n"}    <span className="purple">const</span> res = <span className="purple">await</span> <span className="green">fetch</span>(<span className="amber">'/api/data'</span>)</pre>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  );
+}
 
-export function Chat({ messages, input, busy, llamaOnline, onInput, onSend, onStop }: ChatProps) {
+export function Chat({ messages, input, busy, onInput, onSend, onStop }: ChatProps) {
   const textarea = useRef<HTMLTextAreaElement>(null);
   const submit = (event: FormEvent) => { event.preventDefault(); busy ? onStop() : onSend(); };
   const keyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      if (!busy) onSend();
-    }
+    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if (!busy) onSend(); }
   };
-
   return (
-    <main className="chat-panel">
-      <header className="topbar">
-        <div><span className="eyebrow">CURRENT SESSION</span><h1>ออกแบบ Local AI workspace</h1></div>
-        <div className={`runtime-pill ${llamaOnline ? "online" : ""}`}><span />{llamaOnline ? "Local GPU" : "Model offline"}</div>
-      </header>
-
-      <div className={`messages ${messages.length === 0 ? "empty" : ""}`}>
-        {messages.length === 0 ? (
-          <section className="welcome">
-            <div className="welcome-mark"><Icon name="spark" /></div>
-            <span className="welcome-kicker">PRIVATE BY DESIGN</span>
-            <h2>วันนี้อยากสร้างอะไร?</h2>
-            <p>สนทนา เขียนโค้ด และทำงานกับไฟล์ผ่านโมเดลที่รันอยู่ในเครื่องของคุณ</p>
-            <div className="suggestions">
-              {suggestions.map(([icon, title, copy]) => (
-                <button key={title} onClick={() => { onInput(copy); textarea.current?.focus(); }}>
-                  <Icon name={icon} /><span><strong>{title}</strong><small>{copy}</small></span><Icon name="chevron" />
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : (
-          <div className="message-list">
+    <main className="chat-view">
+      <div className="chat-scroll">
+        {messages.length === 0 ? <DemoConversation /> : (
+          <div className="live-messages">
             {messages.map((message) => (
-              <article className={`message ${message.role} ${message.error ? "error" : ""}`} key={message.id}>
-                <div className="avatar">{message.role === "assistant" ? <Icon name="spark" /> : "ร"}</div>
-                <div className="bubble">
-                  <span className="message-name">{message.role === "assistant" ? "LocalForge" : "คุณ"}</span>
-                  <p>{message.content || (message.pending ? "กำลังคิด…" : "")}</p>
-                </div>
+              <article className={`live-message ${message.role} ${message.error ? "error" : ""}`} key={message.id}>
+                {message.role === "assistant" && <span className="assistant-mark"><Bot size={13} /></span>}
+                <div><small>{message.role === "assistant" ? "LOCALFORGE" : "YOU"}</small><p>{message.content || (message.pending ? "กำลังคิด…" : "")}</p></div>
               </article>
             ))}
           </div>
         )}
       </div>
-
-      <div className="composer-wrap">
-        <form className="composer" onSubmit={submit}>
-          <textarea ref={textarea} value={input} onChange={(event) => onInput(event.target.value)} onKeyDown={keyDown} placeholder="ส่งข้อความถึงโมเดลในเครื่อง…" rows={2} />
-          <div className="composer-actions">
-            <div><button type="button" className="icon-button" aria-label="แนบไฟล์"><Icon name="paperclip" /></button><span>Enter เพื่อส่ง · Shift+Enter ขึ้นบรรทัดใหม่</span></div>
-            <button className={`send-button ${busy ? "stop" : ""}`} type="submit" disabled={!busy && !input.trim()}>
-              <Icon name={busy ? "stop" : "send"} />
-            </button>
-          </div>
+      <div className="composer-area">
+        <form className="artifact-composer" onSubmit={submit}>
+          <div className="attachment-chips"><span><FileCode2 size={11} />App.tsx <X size={10} /></span><span className="violet"><Image size={11} />screenshot.png</span></div>
+          <textarea ref={textarea} value={input} onChange={(event) => onInput(event.target.value)} onKeyDown={keyDown} placeholder="ถามอะไรก็ได้... พิมพ์ / เพื่อใช้คำสั่ง (เช่น /fix /explain /test)" rows={2} />
+          <footer>
+            <div className="input-tools"><button type="button"><Paperclip size={13} /></button><button type="button"><Image size={13} /></button><button type="button"><Mic size={13} /></button><span>⌘ ↵ ส่ง · ⇧↵ บรรทัดใหม่ · / คำสั่ง</span></div>
+            <div className="send-group"><code>{input.length} · ~{Math.ceil(input.length / 4)} tokens</code><button className={busy ? "stop" : ""} disabled={!busy && !input.trim()}>{busy ? <Square size={12} /> : <Send size={12} />}{busy ? "Stop" : "Send"}</button></div>
+          </footer>
         </form>
-        <small className="disclaimer">LocalForge อาจตอบผิดได้ โปรดตรวจสอบโค้ดและข้อมูลสำคัญก่อนใช้งาน</small>
+        <div className="local-note"><Terminal size={9} />Local model · No cloud · Data never leaves device</div>
       </div>
     </main>
   );

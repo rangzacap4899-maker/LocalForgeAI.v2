@@ -11,15 +11,19 @@ LocalForge AI v2 คือ desktop workspace รุ่นใหม่สำห�
 
 รุ่น `0.1.0` เป็น foundation ที่ใช้งานได้สำหรับการพัฒนาต่อ ประกอบด้วย:
 
-- responsive desktop UI พร้อม Chat, Sidebar และ Runtime Inspector
+- responsive IDE-style desktop UI พร้อม title bar, model toolbar, workspace
+  explorer, Chat และ Context Inspector
+- navigation สำหรับ Chat, Model Manager, MCP Permission Center และ
+  side-by-side Diff View
 - Tauri shell จัดการ lifecycle ของ Python sidecar
 - backend bind เฉพาะ `127.0.0.1` และใช้ session token แบบสุ่มทุกครั้ง
 - streaming proxy ไปยัง `/v1/chat/completions` ของ `llama-server`
 - ตรวจสถานะ backend/inference และค้นหาโมเดล GGUF ภายใน model root ของ v2
 - Python unit tests และ GitHub Actions
 
-ยังไม่ใช่ feature parity กับ v1 ฟีเจอร์ Workspace tools, conversation storage,
-model manager, RAG, MCP, multimodal และ embedded IDE จะย้ายเข้ามาทีละส่วน
+ยังไม่ใช่ feature parity กับ v1 โดย Model Manager, MCP Center และ Diff View
+ในรุ่นนี้เป็น presentation layer ที่เตรียมไว้เชื่อม backend ฟีเจอร์ Workspace
+tools, conversation storage, RAG, multimodal และ embedded IDE จะย้ายเข้ามาทีละส่วน
 
 ## สถาปัตยกรรม
 
