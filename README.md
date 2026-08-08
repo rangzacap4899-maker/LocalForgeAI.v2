@@ -85,6 +85,19 @@ npm install
 npm run desktop:build
 ```
 
+### Linux AppImage
+
+Workflow `Package Linux` สร้าง AppImage แบบพกพาซึ่งรวม Python backend ไว้แล้ว
+ดาวน์โหลด artifact จาก GitHub Actions จากนั้นเปิดใช้ได้โดยไม่ต้องติดตั้ง:
+
+```bash
+chmod +x LocalForge_AI_v2_*.AppImage
+./LocalForge_AI_v2_*.AppImage
+```
+
+ตัวแอปจะเชื่อม `llama-server` ที่ `http://127.0.0.1:8080` โดยค่าเริ่มต้น
+หากใช้พอร์ตอื่นให้ตั้ง `LOCALFORGE_API_URL` ก่อนเปิด AppImage
+
 ## ทดสอบ
 
 ```bash
