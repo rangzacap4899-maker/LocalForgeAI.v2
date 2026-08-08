@@ -234,6 +234,26 @@ fn llama_server_executable() -> Result<PathBuf, String> {
     Err("llama-server was not found; set LOCALFORGE_LLAMA_SERVER_BIN".to_string())
 }
 
+#[cfg(target_os = "linux")]
+fn add_runtime_library_path(command: &mut Command, executable: &PathBuf) -> Result<(), String> {
+    let directory = executable
+        .parent()
+        .ok_or("llama-server executable has no parent directory")?;
+    let mut paths = vec![directory.to_path_buf()];
+    if let Some(existing) = std::env::var_os("LD_LIBRARY_PATH") {
+        paths.extend(std::env::split_paths(&existing));
+    }
+    let joined = std::env::join_paths(paths)
+        .map_err(|error| format!("cannot configure llama-server libraries: {error}"))?;
+    command.env("LD_LIBRARY_PATH", joined);
+    Ok(())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn add_runtime_library_path(_command: &mut Command, _executable: &PathBuf) -> Result<(), String> {
+    Ok(())
+}
+
 fn stop_llama_child(inner: &mut LlamaInner) -> Result<(), String> {
     if let Some(mut child) = inner.child.take() {
         child
@@ -340,7 +360,9 @@ fn load_model(
             port
         }
     };
-    let child = Command::new(executable)
+    let mut command = Command::new(&executable);
+    add_runtime_library_path(&mut command, &executable)?;
+    let child = command
         .args([
             OsString::from("--model"),
             model.into_os_string(),
@@ -423,6 +445,13 @@ pub fn run() {
 mod tests {
     use super::validate_model_id;
 
+    #[cfg(target_os = "linux")]
+    use super::add_runtime_library_path;
+    #[cfg(target_os = "linux")]
+    use std::path::PathBuf;
+    #[cfg(target_os = "linux")]
+    use std::process::Command;
+
     #[test]
     fn accepts_a_relative_managed_gguf_id() {
         assert!(validate_model_id("nested/model-Q4_K_M.gguf").is_ok());
@@ -434,5 +463,20 @@ mod tests {
         assert!(validate_model_id("/tmp/outside.gguf").is_err());
         assert!(validate_model_id("model-mmproj.gguf").is_err());
         assert!(validate_model_id("notes.txt").is_err());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn prepends_the_llama_binary_directory_to_the_library_path() {
+        let executable = PathBuf::from("/tmp/localforge-runtime/llama-server");
+        let mut command = Command::new(&executable);
+        add_runtime_library_path(&mut command, &executable).unwrap();
+        let value = command
+            .get_envs()
+            .find(|(key, _value)| *key == "LD_LIBRARY_PATH")
+            .and_then(|(_key, value)| value)
+            .expect("LD_LIBRARY_PATH should be configured");
+        let first = std::env::split_paths(value).next().unwrap();
+        assert_eq!(first, PathBuf::from("/tmp/localforge-runtime"));
     }
 }

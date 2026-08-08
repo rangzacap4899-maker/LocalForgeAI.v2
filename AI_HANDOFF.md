@@ -173,8 +173,11 @@ response with `llamaReachable: false`; this is not a sidecar failure.
 The runtime executable lookup order is `LOCALFORGE_LLAMA_SERVER_BIN`, `PATH`,
 the two known v1 source runtime builds on this development host, then
 `/usr/local/bin` and `/usr/bin`. The release bundle does not yet include
-llama.cpp. `LOCALFORGE_API_URL` selects an externally owned inference endpoint
-and intentionally disables managed load/unload commands.
+llama.cpp. On Linux, Rust prepends the selected executable's directory to the
+child's `LD_LIBRARY_PATH` so adjacent llama.cpp shared libraries resolve without
+mutating the desktop process environment. `LOCALFORGE_API_URL` selects an
+externally owned inference endpoint and intentionally disables managed
+load/unload commands.
 
 Local search checks these conventional locations when present:
 
