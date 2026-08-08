@@ -74,10 +74,11 @@ implemented. Keep v1 as the primary application until the 1.0 gates in
 Known-good repository baseline:
 
 - branch: `main`
-- last published baseline before the 0.2 work: `f15f59c`
-- CI: `https://github.com/rangzacap4899-maker/LocalForgeAI.v2/actions/runs/31246008300`
+- v0.2 feature commit: `7a01351`
+- adjacent llama.cpp library-path fix: `a5a1668`
+- CI: `https://github.com/rangzacap4899-maker/LocalForgeAI.v2/actions/runs/31250008602`
 - Linux packaging:
-  `https://github.com/rangzacap4899-maker/LocalForgeAI.v2/actions/runs/31246108782`
+  `https://github.com/rangzacap4899-maker/LocalForgeAI.v2/actions/runs/31250117054`
 
 ## 3. Architecture
 
@@ -237,6 +238,17 @@ a container, or install an appropriate local toolchain. The CI baseline is:
 
 After a material change, update this handoff with the new state, limitations,
 and verification evidence.
+
+Installed native verification on 2026-08-08:
+
+- backend reported version `0.2.0` and two managed GGUF models;
+- an allowed `http://tauri.localhost` request received that exact origin and
+  `Vary: Origin`, while `https://untrusted.example` received HTTP 403;
+- loading `Qwen3.5-4B-Q4_K_M.gguf` through the installed Models UI started the
+  Vulkan llama-server, changed health to `llamaReachable: true`, and exposed the
+  real Stop action;
+- using Stop from the UI removed the llama-server process and health returned to
+  `llamaReachable: false` while the desktop and Python backend stayed active.
 
 ## 8. Linux packaging and Bazzite
 
