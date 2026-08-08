@@ -9,7 +9,7 @@ export function Inspector({ backendOnline, llamaOnline }: InspectorProps) {
         <h3>Session</h3>
         <section className="clean-model-card">
           <span><Bot size={16} /></span>
-          <div><small>Active model</small><strong>{llamaOnline ? "Local model" : "Gemma 4 E4B"}</strong><em><i className={llamaOnline ? "online" : ""} />{llamaOnline ? "Ready" : "Offline"}</em></div>
+          <div><small>Active model</small><strong>{llamaOnline ? "Local model" : "No model loaded"}</strong><em><i className={llamaOnline ? "online" : ""} />{llamaOnline ? "Ready" : "llama-server offline"}</em></div>
         </section>
 
         <section className="clean-privacy-card">

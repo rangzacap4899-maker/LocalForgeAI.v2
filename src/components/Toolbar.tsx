@@ -1,4 +1,4 @@
-import { Bot, ChevronDown, Database, GitCompareArrows, MessageSquare, Settings, ShieldCheck } from "lucide-react";
+import { Bot, Database, GitCompareArrows, MessageSquare, Settings, ShieldCheck } from "lucide-react";
 
 export type ViewName = "chat" | "models" | "mcp" | "diff";
 
@@ -20,8 +20,8 @@ export function Toolbar({ active, setActive, llamaOnline }: ToolbarProps) {
     <div className="toolbar">
       <div className="model-pill">
         <span className="model-icon"><Bot size={15} /></span>
-        <span><strong>{llamaOnline ? "Local model" : "Gemma 4 E4B IT"}</strong><small>Q4_K_M · 4.2GB · ctx 8k</small></span>
-        <ChevronDown size={12} /><i className={llamaOnline ? "online" : ""} />
+        <span><strong>{llamaOnline ? "Local model" : "No model loaded"}</strong><small>{llamaOnline ? "Connected · local inference" : "llama-server offline"}</small></span>
+        <i className={llamaOnline ? "online" : ""} />
       </div>
 
       <nav className="view-tabs" aria-label="Workspace views">
