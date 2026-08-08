@@ -26,15 +26,23 @@ fn available_port() -> Result<u16, String> {
 }
 
 #[tauri::command]
-fn start_backend(app: tauri::AppHandle, state: State<'_, BackendState>) -> Result<BackendConnection, String> {
-    if let Some(connection) = state.connection.lock().map_err(|_| "backend state is poisoned")?.clone() {
+fn start_backend(
+    app: tauri::AppHandle,
+    state: State<'_, BackendState>,
+) -> Result<BackendConnection, String> {
+    if let Some(connection) = state
+        .connection
+        .lock()
+        .map_err(|_| "backend state is poisoned")?
+        .clone()
+    {
         return Ok(connection);
     }
 
     let port = available_port()?;
     let token = Uuid::new_v4().simple().to_string();
-    let llama_url = std::env::var("LOCALFORGE_API_URL")
-        .unwrap_or_else(|_| "http://127.0.0.1:8080".to_string());
+    let llama_url =
+        std::env::var("LOCALFORGE_API_URL").unwrap_or_else(|_| "http://127.0.0.1:8080".to_string());
 
     let command = app
         .shell()
@@ -57,17 +65,33 @@ fn start_backend(app: tauri::AppHandle, state: State<'_, BackendState>) -> Resul
         base_url: format!("http://127.0.0.1:{port}"),
         token,
     };
-    *state.child.lock().map_err(|_| "backend state is poisoned")? = Some(child);
-    *state.connection.lock().map_err(|_| "backend state is poisoned")? = Some(connection.clone());
+    *state
+        .child
+        .lock()
+        .map_err(|_| "backend state is poisoned")? = Some(child);
+    *state
+        .connection
+        .lock()
+        .map_err(|_| "backend state is poisoned")? = Some(connection.clone());
     Ok(connection)
 }
 
 #[tauri::command]
 fn stop_backend(state: State<'_, BackendState>) -> Result<(), String> {
-    if let Some(child) = state.child.lock().map_err(|_| "backend state is poisoned")?.take() {
-        child.kill().map_err(|error| format!("cannot stop backend: {error}"))?;
+    if let Some(child) = state
+        .child
+        .lock()
+        .map_err(|_| "backend state is poisoned")?
+        .take()
+    {
+        child
+            .kill()
+            .map_err(|error| format!("cannot stop backend: {error}"))?;
     }
-    *state.connection.lock().map_err(|_| "backend state is poisoned")? = None;
+    *state
+        .connection
+        .lock()
+        .map_err(|_| "backend state is poisoned")? = None;
     Ok(())
 }
 
