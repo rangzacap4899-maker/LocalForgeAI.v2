@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  appimage:
-    name: Build AppImage
+  linux-packages:
+    name: Build Linux packages
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -44,10 +44,19 @@ jobs:
       - name: Build Linux application
         run: npm run tauri -- build --bundles appimage
 
-      - name: Upload AppImage
+      - name: Create system-WebKit portable bundle
+        run: |
+          mkdir -p dist-portable/LocalForgeAI-v2
+          install -m 755 src-tauri/target/release/localforge-ai-v2 dist-portable/LocalForgeAI-v2/localforge-ai-v2
+          install -m 755 src-tauri/binaries/localforge-backend-x86_64-unknown-linux-gnu dist-portable/LocalForgeAI-v2/localforge-backend
+          tar -C dist-portable -czf dist-portable/LocalForge-AI-v2-linux-x86_64-native.tar.gz LocalForgeAI-v2
+
+      - name: Upload Linux packages
         uses: actions/upload-artifact@v4
         with:
           name: LocalForge-AI-v2-linux-x86_64
-          path: src-tauri/target/release/bundle/appimage/*.AppImage
+          path: |
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            dist-portable/LocalForge-AI-v2-linux-x86_64-native.tar.gz
           if-no-files-found: error
           retention-days: 30

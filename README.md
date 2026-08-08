@@ -85,10 +85,18 @@ npm install
 npm run desktop:build
 ```
 
-### Linux AppImage
+### Linux packages
 
-Workflow `Package Linux` สร้าง AppImage แบบพกพาซึ่งรวม Python backend ไว้แล้ว
-ดาวน์โหลด artifact จาก GitHub Actions จากนั้นเปิดใช้ได้โดยไม่ต้องติดตั้ง:
+Workflow `Package Linux` สร้างทั้ง AppImage และ native portable bundle ซึ่งรวม
+Python backend ไว้แล้ว สำหรับ Fedora/Bazzite แนะนำ native bundle เพื่อใช้
+WebKitGTK ของระบบและหลีกเลี่ยงปัญหา EGL จากไลบรารีที่ AppImage bundle มา:
+
+```bash
+tar -xzf LocalForge-AI-v2-linux-x86_64-native.tar.gz
+./LocalForgeAI-v2/localforge-ai-v2
+```
+
+บน Linux distribution อื่นสามารถเปิด AppImage ได้โดยไม่ต้องติดตั้ง:
 
 ```bash
 chmod +x LocalForge_AI_v2_*.AppImage
