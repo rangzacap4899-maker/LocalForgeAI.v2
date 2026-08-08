@@ -1,5 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { BackendConnection, ChatMessage, HealthStatus, ModelInfo } from "../types";
+import type { BackendConnection, ChatMessage, HealthStatus, LocalModelCandidate, ModelDownload, ModelInfo } from "../types";
+
+async function errorFrom(response: Response, fallback: string): Promise<Error> {
+  const payload = (await response.json().catch(() => ({}))) as { error?: string };
+  return new Error(payload.error || `${fallback} (${response.status})`);
+}
 
 export async function connectBackend(): Promise<BackendConnection | null> {
   if (!("__TAURI_INTERNALS__" in window)) return null;
@@ -21,6 +26,52 @@ export async function getModels(connection: BackendConnection): Promise<ModelInf
   if (!response.ok) throw new Error(`Model scan failed (${response.status})`);
   const payload = await response.json() as { models?: ModelInfo[] };
   return Array.isArray(payload.models) ? payload.models : [];
+}
+
+export async function searchLocalModels(connection: BackendConnection): Promise<LocalModelCandidate[]> {
+  const response = await fetch(`${connection.baseUrl}/api/models/search`, {
+    headers: { Authorization: `Bearer ${connection.token}` },
+  });
+  if (!response.ok) throw await errorFrom(response, "Local model search failed");
+  const payload = await response.json() as { models?: LocalModelCandidate[] };
+  return Array.isArray(payload.models) ? payload.models : [];
+}
+
+export async function importLocalModel(connection: BackendConnection, id: string): Promise<ModelInfo> {
+  const response = await fetch(`${connection.baseUrl}/api/models/import`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${connection.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id }),
+  });
+  if (!response.ok) throw await errorFrom(response, "Model import failed");
+  const payload = await response.json() as { model: ModelInfo };
+  return payload.model;
+}
+
+export async function startModelDownload(connection: BackendConnection, url: string, fileName: string): Promise<ModelDownload> {
+  const response = await fetch(`${connection.baseUrl}/api/models/download`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${connection.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ url, fileName: fileName.trim() || null }),
+  });
+  if (!response.ok) throw await errorFrom(response, "Model download failed");
+  const payload = await response.json() as { download: ModelDownload };
+  return payload.download;
+}
+
+export async function getModelDownloads(connection: BackendConnection): Promise<ModelDownload[]> {
+  const response = await fetch(`${connection.baseUrl}/api/models/downloads`, {
+    headers: { Authorization: `Bearer ${connection.token}` },
+  });
+  if (!response.ok) throw await errorFrom(response, "Download status failed");
+  const payload = await response.json() as { downloads?: ModelDownload[] };
+  return Array.isArray(payload.downloads) ? payload.downloads : [];
 }
 
 interface StreamOptions {
@@ -48,8 +99,7 @@ export async function streamChat({ connection, messages, signal, onToken, temper
   });
 
   if (!response.ok) {
-    const payload = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(payload.error || `Chat request failed (${response.status})`);
+    throw await errorFrom(response, "Chat request failed");
   }
   if (!response.body) throw new Error("Streaming response is unavailable");
 

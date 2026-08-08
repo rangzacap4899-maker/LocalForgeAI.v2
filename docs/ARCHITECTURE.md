@@ -34,7 +34,8 @@ scripts/                    development/production sidecar builders
 
 1. Conversation persistence and generation settings — implemented in the
    renderer profile; endpoint/runtime settings still need a desktop boundary.
-2. Model discovery — implemented; download and `llama-server` lifecycle remain.
+2. Model discovery, bounded local search, import, and authenticated Hugging Face
+   downloads — implemented; `llama-server` lifecycle remains.
 3. Workspace selection and explicit safe reads — implemented for user-selected
    browser files; native explorer and diff-approved transactions remain.
 4. RAG and semantic cache
@@ -50,3 +51,11 @@ The first workspace implementation intentionally uses an explicit directory
 selection in the WebView. Text-like files up to 300 KB are held in memory and
 only files clicked by the user are attached to a prompt. The renderer has no
 ambient filesystem permission and cannot write workspace files.
+
+Model search is also intentionally bounded. The sidecar checks conventional
+model locations (Downloads, Models, Hugging Face cache, LM Studio cache, and the
+v1 model directory), gives the renderer opaque candidate IDs, and copies only a
+candidate explicitly selected by the user into the v2 model root. Download URLs
+must use HTTPS on Hugging Face-owned hosts. Downloads use a unique partial file,
+report progress through authenticated loopback endpoints, reserve free disk
+space, and atomically rename only after completion.

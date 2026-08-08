@@ -6,6 +6,7 @@ import json
 import shutil
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -13,6 +14,7 @@ from typing import Any
 
 from localforge_backend import __version__
 from localforge_backend.config import BackendConfig
+from localforge_backend.model_operations import ModelOperations
 from localforge_backend.models import discover_models
 
 MAX_REQUEST_BYTES = 2_000_000
@@ -24,6 +26,7 @@ class LocalForgeServer(ThreadingHTTPServer):
     def __init__(self, address: tuple[str, int], config: BackendConfig):
         super().__init__(address, LocalForgeHandler)
         self.config = config
+        self.model_operations = ModelOperations(config.model_root)
 
 
 class LocalForgeHandler(BaseHTTPRequestHandler):
@@ -83,12 +86,23 @@ class LocalForgeHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         if not self._require_auth():
             return
-        if self.path == "/health":
+        path = urllib.parse.urlsplit(self.path).path
+        if path == "/health":
             self._health()
-        elif self.path == "/api/models":
+        elif path == "/api/models":
             self._json(
                 HTTPStatus.OK,
                 {"models": discover_models(self.server.config.model_root)},
+            )
+        elif path == "/api/models/search":
+            self._json(
+                HTTPStatus.OK,
+                {"models": self.server.model_operations.search()},
+            )
+        elif path == "/api/models/downloads":
+            self._json(
+                HTTPStatus.OK,
+                {"downloads": self.server.model_operations.downloads()},
             )
         else:
             self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
@@ -96,10 +110,47 @@ class LocalForgeHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         if not self._require_auth():
             return
-        if self.path == "/api/chat":
+        path = urllib.parse.urlsplit(self.path).path
+        if path == "/api/chat":
             self._chat()
+        elif path == "/api/models/import":
+            self._import_model()
+        elif path == "/api/models/download":
+            self._download_model()
         else:
             self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
+
+    def _import_model(self) -> None:
+        try:
+            candidate_id = self._read_json().get("id")
+            if not isinstance(candidate_id, str) or not candidate_id:
+                raise ValueError("model candidate id is required")
+            model = self.server.model_operations.import_candidate(candidate_id)
+        except FileExistsError as error:
+            self._json(HTTPStatus.CONFLICT, {"error": str(error)})
+            return
+        except (ValueError, json.JSONDecodeError) as error:
+            self._json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            return
+        self._json(HTTPStatus.CREATED, {"model": model})
+
+    def _download_model(self) -> None:
+        try:
+            payload = self._read_json()
+            url = payload.get("url")
+            filename = payload.get("fileName")
+            if not isinstance(url, str) or not url.strip():
+                raise ValueError("model URL is required")
+            if filename is not None and not isinstance(filename, str):
+                raise ValueError("filename must be a string")
+            job = self.server.model_operations.start_download(url.strip(), filename)
+        except FileExistsError as error:
+            self._json(HTTPStatus.CONFLICT, {"error": str(error)})
+            return
+        except (ValueError, json.JSONDecodeError) as error:
+            self._json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            return
+        self._json(HTTPStatus.ACCEPTED, {"download": job})
 
     def _health(self) -> None:
         reachable = False

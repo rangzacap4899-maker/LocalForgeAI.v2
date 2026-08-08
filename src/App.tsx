@@ -9,9 +9,9 @@ import { Sidebar } from "./components/Sidebar";
 import { StatusBar } from "./components/StatusBar";
 import { TitleBar } from "./components/TitleBar";
 import { Toolbar, type ViewName } from "./components/Toolbar";
-import { connectBackend, getHealth, getModels, streamChat } from "./lib/backend";
+import { connectBackend, getHealth, getModelDownloads, getModels, importLocalModel, searchLocalModels, startModelDownload, streamChat } from "./lib/backend";
 import { loadConversations, loadSettings, saveConversations, saveSettings } from "./lib/storage";
-import type { Attachment, BackendConnection, ChatMessage, Conversation, GenerationSettings, ModelInfo, WorkspaceFile } from "./types";
+import type { Attachment, BackendConnection, ChatMessage, Conversation, GenerationSettings, LocalModelCandidate, ModelDownload, ModelInfo, WorkspaceFile } from "./types";
 
 const MAX_FILE_BYTES = 300_000;
 const MAX_ATTACHMENT_BYTES = 1_200_000;
@@ -53,9 +53,14 @@ export default function App() {
   const [settings, setSettings] = useState<GenerationSettings>(loadSettings);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [models, setModels] = useState<ModelInfo[]>([]);
+  const [modelCandidates, setModelCandidates] = useState<LocalModelCandidate[]>([]);
+  const [modelDownloads, setModelDownloads] = useState<ModelDownload[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsSearching, setModelsSearching] = useState(false);
+  const [modelActionId, setModelActionId] = useState("");
   const [modelsError, setModelsError] = useState("");
   const abort = useRef<AbortController | null>(null);
+  const completedDownloads = useRef(new Set<string>());
   const attachedIds = useMemo(() => new Set(attachments.map((file) => file.id)), [attachments]);
 
   useEffect(() => {
@@ -111,6 +116,59 @@ export default function App() {
     finally { setModelsLoading(false); }
   };
   useEffect(() => { if (view === "models" && connection) void scanModels(); }, [view, connection]);
+  useEffect(() => {
+    if (view !== "models" || !connection) return;
+    let active = true;
+    const poll = async () => {
+      try {
+        const next = await getModelDownloads(connection);
+        if (!active) return;
+        setModelDownloads(next);
+        let shouldScan = false;
+        next.forEach((job) => {
+          if (job.status === "complete" && !completedDownloads.current.has(job.id)) {
+            completedDownloads.current.add(job.id);
+            shouldScan = true;
+          }
+        });
+        if (shouldScan) void scanModels();
+      } catch (error) {
+        if (active) setModelsError((error as Error).message);
+      }
+    };
+    void poll();
+    const timer = window.setInterval(() => void poll(), 1000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [view, connection]);
+
+  const findLocalModels = async () => {
+    if (!connection) { setModelsError("Backend ยังไม่พร้อม"); return; }
+    setModelsSearching(true); setModelsError("");
+    try { setModelCandidates(await searchLocalModels(connection)); }
+    catch (error) { setModelsError((error as Error).message); }
+    finally { setModelsSearching(false); }
+  };
+
+  const importCandidate = async (candidateId: string) => {
+    if (!connection) { setModelsError("Backend ยังไม่พร้อม"); return; }
+    setModelActionId(candidateId); setModelsError("");
+    try {
+      await importLocalModel(connection, candidateId);
+      setModelCandidates((current) => current.filter((model) => model.id !== candidateId));
+      await scanModels();
+    } catch (error) { setModelsError((error as Error).message); }
+    finally { setModelActionId(""); }
+  };
+
+  const downloadModel = async (url: string, fileName: string) => {
+    if (!connection) { setModelsError("Backend ยังไม่พร้อม"); return; }
+    setModelActionId("download"); setModelsError("");
+    try {
+      const job = await startModelDownload(connection, url, fileName);
+      setModelDownloads((current) => [job, ...current.filter((item) => item.id !== job.id)]);
+    } catch (error) { setModelsError((error as Error).message); }
+    finally { setModelActionId(""); }
+  };
 
   const addFiles = async (files: FileList | File[]) => {
     const selected = Array.from(files).filter(isReadableFile);
@@ -208,7 +266,7 @@ export default function App() {
         <div className={`workspace-layout ${view !== "chat" ? "feature-mode" : ""}`}>
           <Sidebar conversations={conversations} activeConversationId={activeConversationId} workspaceName={workspaceName} workspaceFiles={workspaceFiles} attachedIds={attachedIds} onNewChat={newChat} onSelectConversation={selectConversation} onWorkspaceFiles={(files) => void openWorkspace(files)} onToggleWorkspaceFile={toggleWorkspaceFile} />
           {view === "chat" && <Chat messages={messages} input={input} busy={busy} attachments={attachments} notice={notice} onInput={setInput} onSend={() => void send()} onStop={() => abort.current?.abort()} onFiles={(files) => void addFiles(files)} onRemoveAttachment={(fileId) => setAttachments((current) => current.filter((file) => file.id !== fileId))} />}
-          {view === "models" && <ModelsView models={models} loading={modelsLoading} error={modelsError} onRefresh={() => void scanModels()} />}
+          {view === "models" && <ModelsView models={models} candidates={modelCandidates} downloads={modelDownloads} loading={modelsLoading} searching={modelsSearching} actionId={modelActionId} error={modelsError} onRefresh={() => void scanModels()} onSearch={() => void findLocalModels()} onImport={(candidateId) => void importCandidate(candidateId)} onDownload={(url, fileName) => void downloadModel(url, fileName)} />}
           {view === "mcp" && <McpView />}
           {view === "diff" && <DiffView />}
           {view === "chat" && <ContextInspector backendOnline={backendOnline} llamaOnline={llamaOnline} />}

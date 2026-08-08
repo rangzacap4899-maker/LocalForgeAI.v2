@@ -25,6 +25,21 @@ export interface ModelInfo {
   sizeBytes: number;
 }
 
+export interface LocalModelCandidate extends ModelInfo {
+  source: string;
+}
+
+export type DownloadStatus = "queued" | "downloading" | "complete" | "error";
+
+export interface ModelDownload {
+  id: string;
+  fileName: string;
+  status: DownloadStatus;
+  downloadedBytes: number;
+  totalBytes: number | null;
+  error: string | null;
+}
+
 export interface Attachment {
   id: string;
   name: string;

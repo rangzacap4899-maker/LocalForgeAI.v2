@@ -53,14 +53,20 @@ Working renderer workflows:
   forwards them to the inference server;
 - Models calls the real authenticated `/api/models` endpoint and can rescan the
   v2 model directory;
+- Model Manager searches bounded conventional locations on the host, returns
+  opaque candidate IDs, and imports only a user-selected GGUF into the v2 root;
+- model downloads accept only HTTPS Hugging Face URLs, report progress, reject
+  HTML pages and unsafe filenames, preserve a 256 MB disk reserve, and move a
+  unique partial file into place atomically;
 - backend and llama health are polled every three seconds;
 - SSE parsing handles `[DONE]`, partial final buffers, and an aborted response
   without turning it into an error message.
 
 The app is not yet at feature parity with v1. MCP and Diff are honest empty
-states. Models can discover files but cannot download or load them. Workspace
-selection and prompt context work, but native filesystem writes and diff
-transactions have not been implemented.
+states. Models can be discovered, imported, and downloaded but cannot yet be
+loaded into a supervised `llama-server`. Workspace selection and prompt context
+work, but native filesystem writes and diff transactions have not been
+implemented.
 
 Known-good repository baseline:
 
@@ -111,6 +117,8 @@ command.
 - `src-tauri/src/lib.rs` — Tauri setup, commands, sidecar lifecycle, shutdown
 - `src-tauri/tauri.conf.json` — desktop window and bundle configuration
 - `backend/localforge_backend/server.py` — authenticated HTTP and SSE sidecar
+- `backend/localforge_backend/model_operations.py` — bounded search, import,
+  and background Hugging Face download jobs
 - `backend/tests/` — Python backend tests
 - `scripts/prepare_sidecar.py` — development sidecar wrapper preparation
 - `scripts/build_sidecar.py` — production PyInstaller sidecar build
@@ -130,6 +138,10 @@ Preserve these unless there is an explicit, reviewed design change:
 - Keep Tauri commands narrow and typed.
 - Treat model paths, workspace paths, MCP tools, and upstream responses as
   untrusted input.
+- Never expose discovered host paths to the renderer. Local model candidates
+  use session-scoped opaque IDs and can only be copied into the managed root.
+- Restrict model downloads to HTTPS Hugging Face hosts, `.gguf` filenames, and
+  non-overwriting atomic completion.
 - Preserve the request-size limit in the sidecar. It is currently 2,000,000
   bytes.
 - Do not perform filesystem writes from chat output. Future workspace edits must
@@ -150,6 +162,16 @@ Defaults:
 The model endpoint recursively discovers `.gguf` files and excludes projector
 files. A healthy sidecar with no llama-server returns a successful health
 response with `llamaReachable: false`; this is not a sidecar failure.
+
+Local search checks these conventional locations when present:
+
+- `~/Downloads`, `~/Models`, and `~/models`
+- `~/.cache/huggingface/hub`
+- `~/.cache/lm-studio/models`
+- `~/.local/share/localforge-ai/models` (read-only v1 source)
+
+Search does not recursively scan the entire home directory. Import copies a
+selected candidate into the v2 model root and never deletes or alters its source.
 
 The v1 data directory is separate:
 `~/.local/share/localforge-ai`. Never merge or delete it as part of v2 cleanup.
@@ -256,7 +278,8 @@ not the AppImage artifact.
 ## 10. Known limitations and failure modes
 
 - No built-in `llama-server` lifecycle or model loading yet.
-- No model download, load, unload, or `llama-server` supervision yet.
+- No model load, unload, or `llama-server` supervision yet. Download and local
+  import are implemented.
 - Settings currently covers temperature and maximum tokens only; changing the
   inference endpoint still requires `LOCALFORGE_API_URL` before launch.
 - Workspace access is explicit, read-only WebView file selection. It does not
@@ -279,8 +302,8 @@ desktop boundary, renderer state, tests, and empty/error handling together.
 Continue the migration in this order unless the user changes priorities:
 
 1. Add inference endpoint settings and restart/reconnect behavior.
-2. Add model download and `llama-server` lifecycle management (discovery is
-   already implemented).
+2. Add model selection plus `llama-server` load/unload and lifecycle management
+   (discovery, import, and download are already implemented).
 3. Replace the session-only workspace picker with a narrow native explorer,
    then add diff preview and approved writes.
 4. Add RAG and semantic caching.
