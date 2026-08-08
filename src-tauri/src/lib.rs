@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::net::TcpListener;
 use std::sync::Mutex;
-use tauri::{Manager, State};
+use tauri::{AppHandle, Manager, State};
 use tauri_plugin_shell::{process::CommandChild, ShellExt};
 use uuid::Uuid;
 
@@ -25,11 +25,7 @@ fn available_port() -> Result<u16, String> {
         .map_err(|error| format!("cannot reserve a backend port: {error}"))
 }
 
-#[tauri::command]
-fn start_backend(
-    app: tauri::AppHandle,
-    state: State<'_, BackendState>,
-) -> Result<BackendConnection, String> {
+fn ensure_backend(app: &AppHandle, state: &BackendState) -> Result<BackendConnection, String> {
     if let Some(connection) = state
         .connection
         .lock()
@@ -77,6 +73,14 @@ fn start_backend(
 }
 
 #[tauri::command]
+fn start_backend(
+    app: AppHandle,
+    state: State<'_, BackendState>,
+) -> Result<BackendConnection, String> {
+    ensure_backend(&app, state.inner())
+}
+
+#[tauri::command]
 fn stop_backend(state: State<'_, BackendState>) -> Result<(), String> {
     if let Some(child) = state
         .child
@@ -100,6 +104,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(BackendState::default())
+        .setup(|app| {
+            ensure_backend(app.handle(), app.state::<BackendState>().inner())
+                .map(|_| ())
+                .map_err(std::io::Error::other)?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![start_backend, stop_backend])
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
