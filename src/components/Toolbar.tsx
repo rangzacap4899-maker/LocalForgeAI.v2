@@ -13,14 +13,15 @@ interface ToolbarProps {
   active: ViewName;
   setActive: (view: ViewName) => void;
   llamaOnline: boolean;
+  onSettings: () => void;
 }
 
-export function Toolbar({ active, setActive, llamaOnline }: ToolbarProps) {
+export function Toolbar({ active, setActive, llamaOnline, onSettings }: ToolbarProps) {
   return (
     <div className="toolbar">
       <div className="model-pill">
         <span className="model-icon"><Bot size={15} /></span>
-        <span><strong>{llamaOnline ? "Local model" : "No model loaded"}</strong><small>{llamaOnline ? "Connected · local inference" : "llama-server offline"}</small></span>
+        <span><strong>{llamaOnline ? "Inference ready" : "No model loaded"}</strong><small>{llamaOnline ? "Connected · local endpoint" : "llama-server offline"}</small></span>
         <i className={llamaOnline ? "online" : ""} />
       </div>
 
@@ -32,7 +33,7 @@ export function Toolbar({ active, setActive, llamaOnline }: ToolbarProps) {
         ))}
       </nav>
 
-      <button className="round-button toolbar-settings" aria-label="Settings"><Settings size={15} /></button>
+      <button className="round-button toolbar-settings" aria-label="Settings" onClick={onSettings}><Settings size={15} /></button>
     </div>
   );
 }

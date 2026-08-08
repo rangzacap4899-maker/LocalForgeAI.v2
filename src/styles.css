@@ -137,3 +137,53 @@ code, pre, .mono { font-family: "JetBrains Mono", "SFMono-Regular", Consolas, mo
 .reset-empty-panel h2 { margin: 0; color: #d9d9de; font-size: 14px; font-weight: 550; }
 .reset-empty-panel p { max-width: 320px; margin: 7px 0 0; color: #666670; font-size: 9px; line-height: 1.6; }
 .reset-empty-panel code { margin-top: 16px; padding: 7px 10px; border-radius: 7px; color: #777780; background: #0c0c0e; font-size: 7px; }
+
+/* Functional workspace controls. */
+.visually-hidden { position: fixed!important; width: 1px!important; height: 1px!important; overflow: hidden!important; opacity: 0!important; pointer-events: none!important; }
+.clean-sidebar h3 { display: flex; align-items: center; justify-content: space-between; }
+.sidebar-icon-button { width: 24px; height: 22px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; color: #686872; background: transparent; }
+.sidebar-icon-button:hover { color: #dddde2; background: #202024; }
+.sidebar-empty-button { width: 100%; text-align: left; cursor: pointer; }
+.sidebar-empty-button:hover { color: #aaaab2; border-color: #39393f; background: #161618; }
+.sidebar-empty-button span { min-width: 0; }
+.workspace-file-list { display: grid; gap: 2px; }
+.workspace-name { padding: 0 6px 8px; overflow: hidden; color: #bdbdc4; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-file { width: 100%; height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 7px; border: 0; border-radius: 6px; color: #74747e; background: transparent; font-size: 8px; text-align: left; }
+.workspace-file:hover { color: #cfcfd4; background: #151517; }
+.workspace-file.active { color: #d9ccff; background: rgba(139,92,246,.14); }
+.workspace-file svg { flex: 0 0 auto; color: #72628d; }
+.workspace-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-more { padding: 6px 7px 0; color: #55555f; font-size: 7px; }
+.clean-history .history-card.active { color: #ded4ff; border-color: rgba(139,92,246,.25); background: rgba(139,92,246,.1); }
+
+.attachment-list { display: flex; gap: 5px; overflow-x: auto; padding: 2px 0 5px; }
+.attachment-list>span { height: 24px; display: flex; align-items: center; gap: 5px; flex: 0 0 auto; padding: 0 4px 0 7px; border: 1px solid #35353b; border-radius: 7px; color: #aaaab2; background: #222226; font-size: 8px; }
+.attachment-list>span svg { color: #9c7bea; }
+.attachment-list>span button { width: 18px; height: 18px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; color: #696972; background: transparent; }
+.attachment-list>span button:hover { color: white; background: #34343a; }
+.local-note.notice { color: #9b83d8; }
+
+.feature-heading>button:disabled { opacity: .55; cursor: wait; transform: none; }
+.spin { animation: control-spin .8s linear infinite; }
+@keyframes control-spin { to { transform: rotate(360deg); } }
+.clean-model-grid .model-card { min-height: 145px; }
+.clean-model-grid .model-card h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clean-model-grid .model-card>code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clean-model-grid .model-card>footer { align-items: center; color: #71717a; font: 8px "JetBrains Mono", monospace; }
+
+.dialog-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(2,2,3,.72); backdrop-filter: blur(7px); }
+.settings-dialog { width: min(400px,100%); padding: 18px; border: 1px solid #34343a; border-radius: 15px; background: #151517; box-shadow: 0 25px 80px rgba(0,0,0,.65); }
+.settings-dialog>header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 1px solid #29292e; }
+.settings-dialog h2 { margin: 0; color: #eeeef1; font-size: 16px; }
+.settings-dialog header p { margin: 4px 0 0; color: #666670; font-size: 9px; }
+.settings-dialog header button { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; color: #777780; background: transparent; }
+.settings-dialog header button:hover { color: white; background: #29292e; }
+.settings-dialog>label { display: grid; grid-template-columns: minmax(0,1fr) 100px; align-items: center; gap: 15px; padding: 15px 2px 0; color: #cfcfd4; font-size: 10px; }
+.settings-dialog label span,.settings-dialog label small { display: block; }
+.settings-dialog label small { margin-top: 3px; color: #62626b; font-size: 8px; }
+.settings-dialog input { width: 100%; height: 32px; padding: 0 9px; border: 1px solid #37373d; border-radius: 8px; outline: 0; color: #eeeef1; background: #0d0d0f; font-size: 10px; }
+.settings-dialog input:focus { border-color: #7050b9; box-shadow: 0 0 0 2px rgba(139,92,246,.1); }
+.settings-dialog>footer { display: flex; justify-content: flex-end; gap: 7px; margin-top: 20px; padding-top: 14px; border-top: 1px solid #29292e; }
+.settings-dialog>footer button { height: 31px; padding: 0 12px; border: 1px solid #37373d; border-radius: 8px; color: #aaaab2; background: #202024; font-size: 9px; }
+.settings-dialog>footer button[type="submit"] { border-color: #7c3aed; color: white; background: #7c3aed; }
+.settings-dialog>footer button:hover { filter: brightness(1.15); }

@@ -65,8 +65,19 @@ class BackendServerTests(unittest.TestCase):
         self.assertEqual(payload["status"], "ok")
         self.assertFalse(payload["llamaReachable"])
 
+    def test_models_endpoint_returns_discovered_models(self) -> None:
+        (Path(self.temp.name) / "local-Q4.gguf").write_bytes(b"weights")
+        with urllib.request.urlopen(self.request("/api/models"), timeout=2) as response:
+            payload = json.load(response)
+        self.assertEqual(
+            payload["models"],
+            [{"id": "local-Q4.gguf", "name": "local-Q4.gguf", "sizeBytes": 7}],
+        )
+
 
 class MockLlamaHandler(BaseHTTPRequestHandler):
+    last_payload: dict[str, object] | None = None
+
     def log_message(self, _message: str, *_args: object) -> None:
         pass
 
@@ -78,6 +89,7 @@ class MockLlamaHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         length = int(self.headers["Content-Length"])
         payload = json.loads(self.rfile.read(length))
+        type(self).last_payload = payload
         assert payload["stream"] is True
         body = b'data: {"choices":[{"delta":{"content":"hello"}}]}\n\ndata: [DONE]\n\n'
         self.send_response(200)
@@ -90,6 +102,7 @@ class MockLlamaHandler(BaseHTTPRequestHandler):
 class ChatProxyTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
+        MockLlamaHandler.last_payload = None
         self.upstream = ThreadingHTTPServer(("127.0.0.1", 0), MockLlamaHandler)
         self.upstream_thread = threading.Thread(target=self.upstream.serve_forever, daemon=True)
         self.upstream_thread.start()
@@ -115,7 +128,13 @@ class ChatProxyTests(unittest.TestCase):
     def test_streams_openai_events_from_llama_server(self) -> None:
         request = urllib.request.Request(
             f"http://127.0.0.1:{self.backend.server_port}/api/chat",
-            data=json.dumps({"messages": [{"role": "user", "content": "hi"}]}).encode(),
+            data=json.dumps(
+                {
+                    "messages": [{"role": "user", "content": "hi"}],
+                    "temperature": 0.2,
+                    "maxTokens": 256,
+                }
+            ).encode(),
             headers={
                 "Authorization": "Bearer test-secret",
                 "Content-Type": "application/json",
@@ -126,6 +145,29 @@ class ChatProxyTests(unittest.TestCase):
             body = response.read().decode()
         self.assertIn('"content":"hello"', body)
         self.assertIn("data: [DONE]", body)
+        self.assertEqual(MockLlamaHandler.last_payload["temperature"], 0.2)
+        self.assertEqual(MockLlamaHandler.last_payload["max_tokens"], 256)
+
+    def test_rejects_invalid_generation_settings(self) -> None:
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{self.backend.server_port}/api/chat",
+            data=json.dumps(
+                {
+                    "messages": [{"role": "user", "content": "hi"}],
+                    "temperature": 9,
+                    "maxTokens": 0,
+                }
+            ).encode(),
+            headers={
+                "Authorization": "Bearer test-secret",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with self.assertRaises(urllib.error.HTTPError) as context:
+            urllib.request.urlopen(request, timeout=2)
+        self.assertEqual(context.exception.code, 400)
+        context.exception.close()
 
 
 if __name__ == "__main__":

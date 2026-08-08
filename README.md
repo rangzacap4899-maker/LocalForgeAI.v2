@@ -19,11 +19,16 @@ LocalForge AI v2 คือ desktop workspace รุ่นใหม่สำห�
 - backend bind เฉพาะ `127.0.0.1` และใช้ session token แบบสุ่มทุกครั้ง
 - streaming proxy ไปยัง `/v1/chat/completions` ของ `llama-server`
 - ตรวจสถานะ backend/inference และค้นหาโมเดล GGUF ภายใน model root ของ v2
+- เปิดโฟลเดอร์ workspace แบบ read-only และเลือกไฟล์ข้อความเป็น context ให้แชต
+- แนบไฟล์ข้อความจาก composer พร้อมจำกัดขนาดข้อมูลก่อนส่ง
+- บันทึกประวัติแชตและค่าการสร้างคำตอบไว้ในโปรไฟล์ v2 ภายในเครื่อง
+- Model Manager แสดงไฟล์ GGUF จริงและสแกนรายการใหม่ได้
 - Python unit tests และ GitHub Actions
 
-ยังไม่ใช่ feature parity กับ v1 โดย Model Manager, MCP Center และ Diff View
-ในรุ่นนี้เป็น presentation layer ที่เตรียมไว้เชื่อม backend ฟีเจอร์ Workspace
-tools, conversation storage, RAG, multimodal และ embedded IDE จะย้ายเข้ามาทีละส่วน
+ยังไม่ใช่ feature parity กับ v1 โดย MCP Center และ Diff View ยังเป็น
+presentation layer ที่เตรียมไว้เชื่อม backend ส่วน Model Manager ยังไม่สามารถ
+ดาวน์โหลดหรือสั่งโหลดโมเดล และ workspace ยังไม่เขียนไฟล์ ฟีเจอร์ RAG,
+multimodal และ embedded IDE จะย้ายเข้ามาทีละส่วน
 
 ## สถาปัตยกรรม
 

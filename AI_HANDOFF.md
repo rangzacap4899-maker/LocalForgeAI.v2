@@ -41,9 +41,26 @@ Current clean-start behavior:
 - `llama-server offline` is expected until a server is listening at the
   configured URL.
 
-The app is not yet at feature parity with v1. The Models, MCP, workspace, and
-Diff screens are presentation-ready empty states, but their complete backend
-workflows have not been implemented.
+Working renderer workflows:
+
+- a user can select a workspace directory; supported text files are shown
+  read-only and can be explicitly attached to a prompt;
+- the paperclip button attaches supported text files up to 300 KB each and 1.2
+  MB total;
+- conversations are stored in the v2 WebKit profile and can be reopened from
+  Recent; the plus button starts a clean chat;
+- Settings persists temperature and maximum-token values and `/api/chat`
+  forwards them to the inference server;
+- Models calls the real authenticated `/api/models` endpoint and can rescan the
+  v2 model directory;
+- backend and llama health are polled every three seconds;
+- SSE parsing handles `[DONE]`, partial final buffers, and an aborted response
+  without turning it into an error message.
+
+The app is not yet at feature parity with v1. MCP and Diff are honest empty
+states. Models can discover files but cannot download or load them. Workspace
+selection and prompt context work, but native filesystem writes and diff
+transactions have not been implemented.
 
 Known-good repository baseline:
 
@@ -90,6 +107,7 @@ command.
 
 - `src/` — React renderer and application styles
 - `src/lib/backend.ts` — renderer-side sidecar connection and API client
+- `src/lib/storage.ts` — local conversation and generation-setting persistence
 - `src-tauri/src/lib.rs` — Tauri setup, commands, sidecar lifecycle, shutdown
 - `src-tauri/tauri.conf.json` — desktop window and bundle configuration
 - `backend/localforge_backend/server.py` — authenticated HTTP and SSE sidecar
@@ -135,6 +153,10 @@ response with `llamaReachable: false`; this is not a sidecar failure.
 
 The v1 data directory is separate:
 `~/.local/share/localforge-ai`. Never merge or delete it as part of v2 cleanup.
+
+Conversation history and generation settings use WebView `localStorage` inside
+the v2 WebKit profile. Workspace file contents and attachments are session-only
+and are not copied into the model directory.
 
 ## 7. Development and verification
 
@@ -234,9 +256,11 @@ not the AppImage artifact.
 ## 10. Known limitations and failure modes
 
 - No built-in `llama-server` lifecycle or model loading yet.
-- No model download/catalog workflow yet.
-- No persisted conversations or settings yet.
-- No workspace filesystem bridge or editor transactions yet.
+- No model download, load, unload, or `llama-server` supervision yet.
+- Settings currently covers temperature and maximum tokens only; changing the
+  inference endpoint still requires `LOCALFORGE_API_URL` before launch.
+- Workspace access is explicit, read-only WebView file selection. It does not
+  retain native file handles between launches and has no editor transactions.
 - No functional MCP registry, permission prompts, or audit history yet.
 - No RAG, semantic cache, image, or audio pipeline yet.
 - The Diff view has no real workspace transaction source yet.
@@ -254,9 +278,11 @@ desktop boundary, renderer state, tests, and empty/error handling together.
 
 Continue the migration in this order unless the user changes priorities:
 
-1. Persist conversations and settings.
-2. Add model discovery/download and `llama-server` lifecycle management.
-3. Add workspace selection, safe reads, diff preview, and approved writes.
+1. Add inference endpoint settings and restart/reconnect behavior.
+2. Add model download and `llama-server` lifecycle management (discovery is
+   already implemented).
+3. Replace the session-only workspace picker with a narrow native explorer,
+   then add diff preview and approved writes.
 4. Add RAG and semantic caching.
 5. Add MCP permissions and audit logging.
 6. Add image and audio workflows.

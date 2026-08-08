@@ -18,3 +18,32 @@ export interface HealthStatus {
   version: string;
   llamaReachable: boolean;
 }
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+  sizeBytes: number;
+}
+
+export interface Attachment {
+  id: string;
+  name: string;
+  content: string;
+  sizeBytes: number;
+}
+
+export interface WorkspaceFile extends Attachment {
+  path: string;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  updatedAt: number;
+  messages: ChatMessage[];
+}
+
+export interface GenerationSettings {
+  temperature: number;
+  maxTokens: number;
+}

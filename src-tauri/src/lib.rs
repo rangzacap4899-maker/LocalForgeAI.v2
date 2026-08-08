@@ -14,8 +14,13 @@ struct BackendConnection {
 
 #[derive(Default)]
 struct BackendState {
-    child: Mutex<Option<CommandChild>>,
-    connection: Mutex<Option<BackendConnection>>,
+    inner: Mutex<BackendInner>,
+}
+
+#[derive(Default)]
+struct BackendInner {
+    child: Option<CommandChild>,
+    connection: Option<BackendConnection>,
 }
 
 fn available_port() -> Result<u16, String> {
@@ -26,12 +31,11 @@ fn available_port() -> Result<u16, String> {
 }
 
 fn ensure_backend(app: &AppHandle, state: &BackendState) -> Result<BackendConnection, String> {
-    if let Some(connection) = state
-        .connection
+    let mut inner = state
+        .inner
         .lock()
-        .map_err(|_| "backend state is poisoned")?
-        .clone()
-    {
+        .map_err(|_| "backend state is poisoned")?;
+    if let Some(connection) = inner.connection.clone() {
         return Ok(connection);
     }
 
@@ -61,14 +65,8 @@ fn ensure_backend(app: &AppHandle, state: &BackendState) -> Result<BackendConnec
         base_url: format!("http://127.0.0.1:{port}"),
         token,
     };
-    *state
-        .child
-        .lock()
-        .map_err(|_| "backend state is poisoned")? = Some(child);
-    *state
-        .connection
-        .lock()
-        .map_err(|_| "backend state is poisoned")? = Some(connection.clone());
+    inner.child = Some(child);
+    inner.connection = Some(connection.clone());
     Ok(connection)
 }
 
@@ -82,20 +80,16 @@ fn start_backend(
 
 #[tauri::command]
 fn stop_backend(state: State<'_, BackendState>) -> Result<(), String> {
-    if let Some(child) = state
-        .child
+    let mut inner = state
+        .inner
         .lock()
-        .map_err(|_| "backend state is poisoned")?
-        .take()
-    {
+        .map_err(|_| "backend state is poisoned")?;
+    if let Some(child) = inner.child.take() {
         child
             .kill()
             .map_err(|error| format!("cannot stop backend: {error}"))?;
     }
-    *state
-        .connection
-        .lock()
-        .map_err(|_| "backend state is poisoned")? = None;
+    inner.connection = None;
     Ok(())
 }
 
@@ -114,8 +108,8 @@ pub fn run() {
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
                 let state = window.state::<BackendState>();
-                if let Ok(mut child) = state.child.lock() {
-                    if let Some(child) = child.take() {
+                if let Ok(mut inner) = state.inner.lock() {
+                    if let Some(child) = inner.child.take() {
                         let _ = child.kill();
                     }
                 };

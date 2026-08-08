@@ -32,9 +32,11 @@ scripts/                    development/production sidecar builders
 
 ## Migration sequence
 
-1. Conversation persistence and settings
-2. Model discovery, download and `llama-server` lifecycle
-3. Workspace explorer, safe reads and diff-approved transactions
+1. Conversation persistence and generation settings — implemented in the
+   renderer profile; endpoint/runtime settings still need a desktop boundary.
+2. Model discovery — implemented; download and `llama-server` lifecycle remain.
+3. Workspace selection and explicit safe reads — implemented for user-selected
+   browser files; native explorer and diff-approved transactions remain.
 4. RAG and semantic cache
 5. MCP permission center, hooks and audit trail
 6. Image/audio input
@@ -43,3 +45,8 @@ scripts/                    development/production sidecar builders
 Each phase must add backend tests before its corresponding renderer workflow.
 No v1 state is mutated; a future importer will read v1 data and write a separate
 v2 copy only after explicit user confirmation.
+
+The first workspace implementation intentionally uses an explicit directory
+selection in the WebView. Text-like files up to 300 KB are held in memory and
+only files clicked by the user are attached to a prompt. The renderer has no
+ambient filesystem permission and cannot write workspace files.

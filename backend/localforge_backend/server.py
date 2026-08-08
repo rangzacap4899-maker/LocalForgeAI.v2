@@ -125,12 +125,26 @@ class LocalForgeHandler(BaseHTTPRequestHandler):
             messages = payload.get("messages")
             if not isinstance(messages, list) or not messages:
                 raise ValueError("messages must be a non-empty array")
+            temperature = payload.get("temperature", 0.7)
+            max_tokens = payload.get("maxTokens", 1024)
+            if (
+                isinstance(temperature, bool)
+                or not isinstance(temperature, (int, float))
+                or not 0 <= temperature <= 2
+            ):
+                raise ValueError("temperature must be between 0 and 2")
+            if (
+                isinstance(max_tokens, bool)
+                or not isinstance(max_tokens, int)
+                or not 64 <= max_tokens <= 32768
+            ):
+                raise ValueError("maxTokens must be an integer between 64 and 32768")
             request_body = json.dumps(
                 {
                     "messages": messages,
                     "stream": True,
-                    "temperature": payload.get("temperature", 0.7),
-                    "max_tokens": payload.get("maxTokens", 1024),
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
                 }
             ).encode("utf-8")
         except (ValueError, json.JSONDecodeError) as error:
