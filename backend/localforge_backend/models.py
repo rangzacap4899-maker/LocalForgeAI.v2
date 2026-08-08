@@ -39,6 +39,7 @@ def default_search_roots(home: Path) -> list[tuple[str, Path]]:
         ("Hugging Face", home / ".cache" / "huggingface" / "hub"),
         ("LM Studio", home / ".cache" / "lm-studio" / "models"),
         ("LocalForge v1", home / ".local" / "share" / "localforge-ai" / "models"),
+        ("LocalForge v1", home / "LocalForge-AI" / "models"),
     ]
 
 

@@ -23,7 +23,8 @@ LocalForge AI v2 คือ desktop workspace รุ่นใหม่สำห�
 - แนบไฟล์ข้อความจาก composer พร้อมจำกัดขนาดข้อมูลก่อนส่ง
 - บันทึกประวัติแชตและค่าการสร้างคำตอบไว้ในโปรไฟล์ v2 ภายในเครื่อง
 - Model Manager แสดงไฟล์ GGUF จริง ดาวน์โหลดจาก Hugging Face พร้อม progress
-  และค้นหาโมเดลจากตำแหน่งมาตรฐานในเครื่องเพื่อนำเข้า v2 ได้
+  และค้นหาโมเดลจากตำแหน่งมาตรฐานรวมถึง `~/LocalForge-AI/models`
+  เพื่อนำเข้า v2 ได้
 - Python unit tests และ GitHub Actions
 
 ยังไม่ใช่ feature parity กับ v1 โดย MCP Center และ Diff View ยังเป็น

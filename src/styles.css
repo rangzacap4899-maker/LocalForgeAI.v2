@@ -239,6 +239,7 @@ code, pre, .mono { font-family: "JetBrains Mono", "SFMono-Regular", Consolas, mo
 .models-inline-empty strong,.models-inline-empty small { display: block; }
 .models-inline-empty strong { color: #96969f; font-size: 9px; font-weight: 500; }
 .models-inline-empty small { margin-top: 3px; color: #565660; font-size: 8px; }
+.search-result-empty { min-height: 58px; justify-content: flex-start; margin-bottom: 17px; padding: 0 14px; border: 1px solid rgba(139,92,246,.14); border-radius: 10px; color: #9578d3; background: rgba(139,92,246,.035); animation: clean-rise .25s ease both; }
 
 .model-download-dialog { width: min(500px,100%); }
 .model-download-dialog>.dialog-field { grid-template-columns: 1fr; gap: 8px; }

@@ -57,6 +57,7 @@ export default function App() {
   const [modelDownloads, setModelDownloads] = useState<ModelDownload[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsSearching, setModelsSearching] = useState(false);
+  const [modelsSearched, setModelsSearched] = useState(false);
   const [modelActionId, setModelActionId] = useState("");
   const [modelsError, setModelsError] = useState("");
   const abort = useRef<AbortController | null>(null);
@@ -143,8 +144,11 @@ export default function App() {
 
   const findLocalModels = async () => {
     if (!connection) { setModelsError("Backend ยังไม่พร้อม"); return; }
-    setModelsSearching(true); setModelsError("");
-    try { setModelCandidates(await searchLocalModels(connection)); }
+    setModelsSearching(true); setModelsSearched(false); setModelsError("");
+    try {
+      setModelCandidates(await searchLocalModels(connection));
+      setModelsSearched(true);
+    }
     catch (error) { setModelsError((error as Error).message); }
     finally { setModelsSearching(false); }
   };
@@ -266,7 +270,7 @@ export default function App() {
         <div className={`workspace-layout ${view !== "chat" ? "feature-mode" : ""}`}>
           <Sidebar conversations={conversations} activeConversationId={activeConversationId} workspaceName={workspaceName} workspaceFiles={workspaceFiles} attachedIds={attachedIds} onNewChat={newChat} onSelectConversation={selectConversation} onWorkspaceFiles={(files) => void openWorkspace(files)} onToggleWorkspaceFile={toggleWorkspaceFile} />
           {view === "chat" && <Chat messages={messages} input={input} busy={busy} attachments={attachments} notice={notice} onInput={setInput} onSend={() => void send()} onStop={() => abort.current?.abort()} onFiles={(files) => void addFiles(files)} onRemoveAttachment={(fileId) => setAttachments((current) => current.filter((file) => file.id !== fileId))} />}
-          {view === "models" && <ModelsView models={models} candidates={modelCandidates} downloads={modelDownloads} loading={modelsLoading} searching={modelsSearching} actionId={modelActionId} error={modelsError} onRefresh={() => void scanModels()} onSearch={() => void findLocalModels()} onImport={(candidateId) => void importCandidate(candidateId)} onDownload={(url, fileName) => void downloadModel(url, fileName)} />}
+          {view === "models" && <ModelsView models={models} candidates={modelCandidates} downloads={modelDownloads} loading={modelsLoading} searching={modelsSearching} searched={modelsSearched} actionId={modelActionId} error={modelsError} onRefresh={() => void scanModels()} onSearch={() => void findLocalModels()} onImport={(candidateId) => void importCandidate(candidateId)} onDownload={(url, fileName) => void downloadModel(url, fileName)} />}
           {view === "mcp" && <McpView />}
           {view === "diff" && <DiffView />}
           {view === "chat" && <ContextInspector backendOnline={backendOnline} llamaOnline={llamaOnline} />}

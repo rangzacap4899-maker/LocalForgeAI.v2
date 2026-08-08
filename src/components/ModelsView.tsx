@@ -8,6 +8,7 @@ interface ModelsViewProps {
   downloads: ModelDownload[];
   loading: boolean;
   searching: boolean;
+  searched: boolean;
   actionId: string;
   error: string;
   onRefresh: () => void;
@@ -22,7 +23,7 @@ const formatBytes = (value: number) => {
   return `${(value / 1024 ** 3).toFixed(2)} GB`;
 };
 
-export function ModelsView({ models, candidates, downloads, loading, searching, actionId, error, onRefresh, onSearch, onImport, onDownload }: ModelsViewProps) {
+export function ModelsView({ models, candidates, downloads, loading, searching, searched, actionId, error, onRefresh, onSearch, onImport, onDownload }: ModelsViewProps) {
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [fileName, setFileName] = useState("");
@@ -74,6 +75,10 @@ export function ModelsView({ models, candidates, downloads, loading, searching, 
               ))}
             </div>
           </section>
+        )}
+
+        {searched && !searching && candidates.length === 0 && (
+          <div className="models-inline-empty search-result-empty"><Search size={18} /><div><strong>ค้นหาเสร็จแล้ว · ไม่พบไฟล์ GGUF</strong><small>ตรวจแล้วใน Downloads, Models, Hugging Face cache, LM Studio และ LocalForge v1</small></div></div>
         )}
 
         <section className="model-section managed-models">

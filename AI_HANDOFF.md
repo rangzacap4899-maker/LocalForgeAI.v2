@@ -169,9 +169,14 @@ Local search checks these conventional locations when present:
 - `~/.cache/huggingface/hub`
 - `~/.cache/lm-studio/models`
 - `~/.local/share/localforge-ai/models` (read-only v1 source)
+- `~/LocalForge-AI/models` (the current v1 source checkout used on this host)
 
 Search does not recursively scan the entire home directory. Import copies a
 selected candidate into the v2 model root and never deletes or alters its source.
+On the current host, search is expected to find five primary GGUF models under
+`~/LocalForge-AI/models`; projector and llama.cpp vocabulary fixtures are
+excluded. The Models UI tracks whether a search completed and shows an explicit
+empty result instead of silently returning to the unchanged screen.
 
 The v1 data directory is separate:
 `~/.local/share/localforge-ai`. Never merge or delete it as part of v2 cleanup.

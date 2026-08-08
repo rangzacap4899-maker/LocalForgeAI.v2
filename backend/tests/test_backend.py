@@ -14,11 +14,16 @@ from unittest.mock import patch
 
 from localforge_backend.config import BackendConfig
 from localforge_backend.model_operations import ModelOperations
-from localforge_backend.models import discover_external_models, discover_models
+from localforge_backend.models import default_search_roots, discover_external_models, discover_models
 from localforge_backend.server import create_server
 
 
 class ModelDiscoveryTests(unittest.TestCase):
+    def test_default_search_includes_the_v1_source_model_directory(self) -> None:
+        home = Path("/home/tester")
+        roots = default_search_roots(home)
+        self.assertIn(("LocalForge v1", home / "LocalForge-AI" / "models"), roots)
+
     def test_discovers_models_and_ignores_projectors(self) -> None:
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
