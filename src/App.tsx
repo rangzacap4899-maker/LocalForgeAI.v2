@@ -9,9 +9,9 @@ import { Sidebar } from "./components/Sidebar";
 import { StatusBar } from "./components/StatusBar";
 import { TitleBar } from "./components/TitleBar";
 import { Toolbar, type ViewName } from "./components/Toolbar";
-import { connectBackend, getHealth, getModelDownloads, getModels, importLocalModel, searchLocalModels, startModelDownload, streamChat } from "./lib/backend";
+import { connectBackend, getHealth, getModelDownloads, getModels, getModelRuntime, importLocalModel, loadManagedModel, searchLocalModels, startModelDownload, streamChat, unloadManagedModel } from "./lib/backend";
 import { loadConversations, loadSettings, saveConversations, saveSettings } from "./lib/storage";
-import type { Attachment, BackendConnection, ChatMessage, Conversation, GenerationSettings, LocalModelCandidate, ModelDownload, ModelInfo, WorkspaceFile } from "./types";
+import type { Attachment, BackendConnection, ChatMessage, Conversation, GenerationSettings, LocalModelCandidate, ModelDownload, ModelInfo, ModelRuntimeStatus, WorkspaceFile } from "./types";
 
 const MAX_FILE_BYTES = 300_000;
 const MAX_ATTACHMENT_BYTES = 1_200_000;
@@ -60,6 +60,7 @@ export default function App() {
   const [modelsSearched, setModelsSearched] = useState(false);
   const [modelActionId, setModelActionId] = useState("");
   const [modelsError, setModelsError] = useState("");
+  const [modelRuntime, setModelRuntime] = useState<ModelRuntimeStatus>({ state: "stopped", modelId: null, modelName: null, managed: true, error: null });
   const abort = useRef<AbortController | null>(null);
   const completedDownloads = useRef(new Set<string>());
   const attachedIds = useMemo(() => new Set(attachments.map((file) => file.id)), [attachments]);
@@ -75,9 +76,11 @@ export default function App() {
         const check = async () => {
           try {
             const health = await getHealth(next);
+            const runtime = await getModelRuntime();
             if (!active) return;
             setBackendOnline(true);
             setLlamaOnline(health.llamaReachable);
+            setModelRuntime(runtime);
           } catch {
             if (!active) return;
             setBackendOnline(false);
@@ -174,6 +177,20 @@ export default function App() {
     finally { setModelActionId(""); }
   };
 
+  const loadModel = async (modelId: string) => {
+    setModelActionId(`runtime:${modelId}`); setModelsError("");
+    try { setModelRuntime(await loadManagedModel(modelId)); }
+    catch (error) { setModelsError(String(error)); }
+    finally { setModelActionId(""); }
+  };
+
+  const unloadModel = async () => {
+    setModelActionId("runtime:unload"); setModelsError("");
+    try { setModelRuntime(await unloadManagedModel()); setLlamaOnline(false); }
+    catch (error) { setModelsError(String(error)); }
+    finally { setModelActionId(""); }
+  };
+
   const addFiles = async (files: FileList | File[]) => {
     const selected = Array.from(files).filter(isReadableFile);
     let total = attachments.reduce((sum, file) => sum + file.sizeBytes, 0);
@@ -266,11 +283,11 @@ export default function App() {
     <div className="desktop-stage">
       <div className="desktop-window">
         <TitleBar />
-        <Toolbar active={view} setActive={selectView} llamaOnline={llamaOnline} onSettings={() => setSettingsOpen(true)} />
+        <Toolbar active={view} setActive={selectView} llamaOnline={llamaOnline} runtime={modelRuntime} onSettings={() => setSettingsOpen(true)} />
         <div className={`workspace-layout ${view !== "chat" ? "feature-mode" : ""}`}>
           <Sidebar conversations={conversations} activeConversationId={activeConversationId} workspaceName={workspaceName} workspaceFiles={workspaceFiles} attachedIds={attachedIds} onNewChat={newChat} onSelectConversation={selectConversation} onWorkspaceFiles={(files) => void openWorkspace(files)} onToggleWorkspaceFile={toggleWorkspaceFile} />
           {view === "chat" && <Chat messages={messages} input={input} busy={busy} attachments={attachments} notice={notice} onInput={setInput} onSend={() => void send()} onStop={() => abort.current?.abort()} onFiles={(files) => void addFiles(files)} onRemoveAttachment={(fileId) => setAttachments((current) => current.filter((file) => file.id !== fileId))} />}
-          {view === "models" && <ModelsView models={models} candidates={modelCandidates} downloads={modelDownloads} loading={modelsLoading} searching={modelsSearching} searched={modelsSearched} actionId={modelActionId} error={modelsError} onRefresh={() => void scanModels()} onSearch={() => void findLocalModels()} onImport={(candidateId) => void importCandidate(candidateId)} onDownload={(url, fileName) => void downloadModel(url, fileName)} />}
+          {view === "models" && <ModelsView models={models} candidates={modelCandidates} downloads={modelDownloads} loading={modelsLoading} searching={modelsSearching} searched={modelsSearched} actionId={modelActionId} error={modelsError || modelRuntime.error || ""} runtime={modelRuntime} llamaOnline={llamaOnline} onRefresh={() => void scanModels()} onSearch={() => void findLocalModels()} onImport={(candidateId) => void importCandidate(candidateId)} onDownload={(url, fileName) => void downloadModel(url, fileName)} onLoad={(modelId) => void loadModel(modelId)} onUnload={() => void unloadModel()} />}
           {view === "mcp" && <McpView />}
           {view === "diff" && <DiffView />}
           {view === "chat" && <ContextInspector backendOnline={backendOnline} llamaOnline={llamaOnline} />}

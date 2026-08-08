@@ -1,4 +1,5 @@
 import { Bot, Database, GitCompareArrows, MessageSquare, Settings, ShieldCheck } from "lucide-react";
+import type { ModelRuntimeStatus } from "../types";
 
 export type ViewName = "chat" | "models" | "mcp" | "diff";
 
@@ -13,15 +14,20 @@ interface ToolbarProps {
   active: ViewName;
   setActive: (view: ViewName) => void;
   llamaOnline: boolean;
+  runtime: ModelRuntimeStatus;
   onSettings: () => void;
 }
 
-export function Toolbar({ active, setActive, llamaOnline, onSettings }: ToolbarProps) {
+export function Toolbar({ active, setActive, llamaOnline, runtime, onSettings }: ToolbarProps) {
+  const runtimeTitle = runtime.modelName || (llamaOnline ? "Inference ready" : "No model loaded");
+  const runtimeDetail = runtime.modelName
+    ? llamaOnline ? "พร้อมใช้งาน · local" : "กำลังเริ่ม llama-server"
+    : runtime.managed ? "เลือกโมเดลจาก Models" : "External endpoint";
   return (
     <div className="toolbar">
       <div className="model-pill">
         <span className="model-icon"><Bot size={15} /></span>
-        <span><strong>{llamaOnline ? "Inference ready" : "No model loaded"}</strong><small>{llamaOnline ? "Connected · local endpoint" : "llama-server offline"}</small></span>
+        <span><strong title={runtimeTitle}>{runtimeTitle}</strong><small>{runtimeDetail}</small></span>
         <i className={llamaOnline ? "online" : ""} />
       </div>
 

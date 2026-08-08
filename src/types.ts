@@ -25,6 +25,16 @@ export interface ModelInfo {
   sizeBytes: number;
 }
 
+export type ModelRuntimeState = "stopped" | "running" | "external";
+
+export interface ModelRuntimeStatus {
+  state: ModelRuntimeState;
+  modelId: string | null;
+  modelName: string | null;
+  managed: boolean;
+  error: string | null;
+}
+
 export interface LocalModelCandidate extends ModelInfo {
   source: string;
 }

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { BackendConnection, ChatMessage, HealthStatus, LocalModelCandidate, ModelDownload, ModelInfo } from "../types";
+import type { BackendConnection, ChatMessage, HealthStatus, LocalModelCandidate, ModelDownload, ModelInfo, ModelRuntimeStatus } from "../types";
 
 async function errorFrom(response: Response, fallback: string): Promise<Error> {
   const payload = (await response.json().catch(() => ({}))) as { error?: string };
@@ -9,6 +9,18 @@ async function errorFrom(response: Response, fallback: string): Promise<Error> {
 export async function connectBackend(): Promise<BackendConnection | null> {
   if (!("__TAURI_INTERNALS__" in window)) return null;
   return invoke<BackendConnection>("start_backend");
+}
+
+export async function getModelRuntime(): Promise<ModelRuntimeStatus> {
+  return invoke<ModelRuntimeStatus>("get_model_runtime");
+}
+
+export async function loadManagedModel(modelId: string): Promise<ModelRuntimeStatus> {
+  return invoke<ModelRuntimeStatus>("load_model", { modelId });
+}
+
+export async function unloadManagedModel(): Promise<ModelRuntimeStatus> {
+  return invoke<ModelRuntimeStatus>("unload_model");
 }
 
 export async function getHealth(connection: BackendConnection): Promise<HealthStatus> {

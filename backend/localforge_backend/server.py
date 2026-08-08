@@ -40,10 +40,28 @@ class LocalForgeHandler(BaseHTTPRequestHandler):
             flush=True,
         )
 
-    def _cors_headers(self) -> None:
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    def _origin(self) -> str | None:
+        return self.headers.get("Origin")
+
+    def _origin_allowed(self) -> bool:
+        origin = self._origin()
+        return origin is None or origin in self.server.config.allowed_origins
+
+    def _cors_headers(self, *, preflight: bool = False) -> None:
+        origin = self._origin()
+        if origin is None or origin not in self.server.config.allowed_origins:
+            return
+        self.send_header("Access-Control-Allow-Origin", origin)
+        self.send_header("Vary", "Origin")
+        if preflight:
+            self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+
+    def _require_allowed_origin(self) -> bool:
+        if self._origin_allowed():
+            return True
+        self._json(HTTPStatus.FORBIDDEN, {"error": "origin is not allowed"})
+        return False
 
     def _json(self, status: HTTPStatus, payload: dict[str, Any]) -> None:
         encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -78,12 +96,17 @@ class LocalForgeHandler(BaseHTTPRequestHandler):
         return value
 
     def do_OPTIONS(self) -> None:  # noqa: N802
+        if not self._origin_allowed():
+            self._json(HTTPStatus.FORBIDDEN, {"error": "origin is not allowed"})
+            return
         self.send_response(HTTPStatus.NO_CONTENT)
-        self._cors_headers()
+        self._cors_headers(preflight=True)
         self.send_header("Content-Length", "0")
         self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802
+        if not self._require_allowed_origin():
+            return
         if not self._require_auth():
             return
         path = urllib.parse.urlsplit(self.path).path
@@ -108,6 +131,8 @@ class LocalForgeHandler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
 
     def do_POST(self) -> None:  # noqa: N802
+        if not self._require_allowed_origin():
+            return
         if not self._require_auth():
             return
         path = urllib.parse.urlsplit(self.path).path
@@ -246,12 +271,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--token", required=True)
     parser.add_argument("--llama-url", default="http://127.0.0.1:8080")
+    parser.add_argument("--allowed-origin", action="append", default=[])
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    config = BackendConfig.create(args.port, args.token, args.llama_url)
+    config = BackendConfig.create(
+        args.port,
+        args.token,
+        args.llama_url,
+        tuple(args.allowed_origin),
+    )
     server = create_server(config)
     print(
         json.dumps({"status": "ready", "port": server.server_port}),

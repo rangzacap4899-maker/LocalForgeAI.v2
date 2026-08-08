@@ -14,9 +14,37 @@ the backend through a narrow Tauri command. Rust selects an unused loopback port
 generates a random session token and starts the bundled sidecar with both values.
 
 The renderer communicates with the sidecar over HTTP on `127.0.0.1`. Every
-request requires the random bearer token. The sidecar never binds to a public
-interface. Its first responsibility is to validate requests and proxy streaming
-responses from the configured local `llama-server`.
+request requires the random bearer token. Browser requests are accepted only
+from the exact Tauri production origins (`http://tauri.localhost` and
+`tauri://localhost`); debug builds additionally allow the fixed Vite origin.
+Requests without an `Origin` remain available to native diagnostics, while any
+other browser origin is rejected before authentication. The sidecar never binds
+to a public interface.
+
+## Process ownership
+
+Privileged local processes have one owner: the Rust shell. Rust validates
+renderer requests, resolves managed resources under fixed roots, starts and
+stops children without invoking a shell, and terminates them with the desktop
+session. Python owns AI orchestration and protocol handling, but does not become
+a second general-purpose process supervisor. React can request typed operations;
+it never supplies an executable path, command line, working directory, or shell
+fragment.
+
+| Concern | Owner | Boundary |
+| --- | --- | --- |
+| Python sidecar lifecycle | Rust | Bundled sidecar name and generated session credentials |
+| `llama-server` lifecycle | Rust | Managed relative model ID resolved under the v2 model root |
+| Chat/SSE and model discovery | Python | Authenticated loopback API |
+| Future MCP child processes | Rust | Registry ID + approved typed arguments only |
+| MCP protocol/orchestration | Python | Structured messages over a bounded local channel |
+| UI and permission decisions | React | Narrow Tauri commands; no raw paths or shell strings |
+
+The current model runtime discovers `llama-server` from an explicit
+`LOCALFORGE_LLAMA_SERVER_BIN`, `PATH`, conventional system locations, or the
+read-only v1 source runtime on this development host. Release bundles do not yet
+ship llama.cpp themselves. Setting `LOCALFORGE_API_URL` selects an externally
+owned endpoint and disables managed load/unload commands.
 
 ## Source layout
 
@@ -34,8 +62,9 @@ scripts/                    development/production sidecar builders
 
 1. Conversation persistence and generation settings — implemented in the
    renderer profile; endpoint/runtime settings still need a desktop boundary.
-2. Model discovery, bounded local search, import, and authenticated Hugging Face
-   downloads — implemented; `llama-server` lifecycle remains.
+2. Model discovery, bounded local search, import, authenticated Hugging Face
+   downloads, and Rust-owned `llama-server` load/unload — implemented; bundled
+   llama.cpp distribution and runtime tuning remain.
 3. Workspace selection and explicit safe reads — implemented for user-selected
    browser files; native explorer and diff-approved transactions remain.
 4. RAG and semantic cache

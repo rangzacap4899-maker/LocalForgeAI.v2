@@ -131,7 +131,7 @@ class ModelOperations:
         self.model_root.mkdir(parents=True, exist_ok=True)
         try:
             request = urllib.request.Request(
-                url, headers={"User-Agent": "LocalForge-AI-v2/0.1.0"}
+                url, headers={"User-Agent": "LocalForge-AI-v2/0.2.0"}
             )
             self._update(job_id, status="downloading")
             with urllib.request.urlopen(request, timeout=900) as response:

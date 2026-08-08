@@ -13,7 +13,7 @@ incremental replacement candidate for v1, not an in-place migration.
 - v2 repository: `/home/addrang/LocalForgeAI.v2`
 - GitHub: `https://github.com/rangzacap4899-maker/LocalForgeAI.v2.git`
 - v1 repository: `/home/addrang/LocalForge-AI`
-- Current application version: `0.1.0`
+- Current application version: `0.2.0` (Preview)
 
 Do not modify, remove, migrate, or reuse v1 application data unless the user
 explicitly requests it. If work ever touches the v1 repository, read its own
@@ -38,8 +38,8 @@ Current clean-start behavior:
 - no model is reported as loaded;
 - Models, MCP, and Diff show honest empty states;
 - the backend starts with the desktop application;
-- `llama-server offline` is expected until a server is listening at the
-  configured URL.
+- `llama-server offline` is expected until the user loads a managed model or an
+  external endpoint is configured.
 
 Working renderer workflows:
 
@@ -55,6 +55,9 @@ Working renderer workflows:
   v2 model directory;
 - Model Manager searches bounded conventional locations on the host, returns
   opaque candidate IDs, and imports only a user-selected GGUF into the v2 root;
+- Model Manager loads, stops, and switches managed models through a
+  Rust-supervised `llama-server`; model IDs are canonicalized below the managed
+  root and the renderer never supplies an executable or filesystem path;
 - model downloads accept only HTTPS Hugging Face URLs, report progress, reject
   HTML pages and unsafe filenames, preserve a 256 MB disk reserve, and move a
   unique partial file into place atomically;
@@ -62,19 +65,19 @@ Working renderer workflows:
 - SSE parsing handles `[DONE]`, partial final buffers, and an aborted response
   without turning it into an error message.
 
-The app is not yet at feature parity with v1. MCP and Diff are honest empty
-states. Models can be discovered, imported, and downloaded but cannot yet be
-loaded into a supervised `llama-server`. Workspace selection and prompt context
-work, but native filesystem writes and diff transactions have not been
-implemented.
+The app is not yet at feature parity with v1 and must remain visibly labelled
+Preview. MCP and Diff are honest empty states. Workspace selection and prompt
+context work, but native filesystem writes and diff transactions have not been
+implemented. Keep v1 as the primary application until the 1.0 gates in
+`ROADMAP.md` are complete.
 
 Known-good repository baseline:
 
 - branch: `main`
-- baseline commit before this document: `4a2f04b`
-- CI: `https://github.com/rangzacap4899-maker/LocalForgeAI.v2/actions/runs/31242451511`
+- last published baseline before the 0.2 work: `f15f59c`
+- CI: `https://github.com/rangzacap4899-maker/LocalForgeAI.v2/actions/runs/31246008300`
 - Linux packaging:
-  `https://github.com/rangzacap4899-maker/LocalForgeAI.v2/actions/runs/31242451487`
+  `https://github.com/rangzacap4899-maker/LocalForgeAI.v2/actions/runs/31246108782`
 
 ## 3. Architecture
 
@@ -84,27 +87,28 @@ React + TypeScript renderer
         | Tauri IPC: narrow desktop-only commands
         v
 Rust / Tauri shell
-        |
-        | starts sidecar and injects a random bearer token
+        | starts sidecar + supervised llama-server
+        | injects random bearer token and exact allowed origins
         v
 Python loopback sidecar (127.0.0.1, random available port)
         |
-        | OpenAI-compatible HTTP/SSE
+        | OpenAI-compatible HTTP/SSE to a Rust-owned random port
         v
-llama-server (default http://127.0.0.1:8080)
+llama-server
 ```
 
 Responsibilities:
 
 - React renders the interface and consumes the sidecar API. It must not receive
   general shell or filesystem access.
-- Rust owns the desktop lifecycle, starts the Python sidecar, reads its startup
-  metadata, exposes the minimal connection details to the renderer, and stops
-  the child process when the desktop window is destroyed.
+- Rust owns privileged process lifecycle. It starts the Python sidecar and
+  `llama-server`, validates managed model IDs, exposes only typed runtime status,
+  and stops both children when the desktop window is destroyed.
 - Python provides a small authenticated API, discovers local `.gguf` files, and
   proxies streaming chat requests to `llama-server`.
-- `llama-server` is currently external. v2 does not yet download, configure, or
-  supervise it.
+- Python owns AI orchestration and protocol translation, not general process
+  creation. Future MCP process spawning also belongs in Rust behind registry IDs
+  and explicit permissions; see `docs/ARCHITECTURE.md`.
 
 Read `docs/ARCHITECTURE.md` before extending a boundary or adding a privileged
 command.
@@ -132,6 +136,9 @@ Preserve these unless there is an explicit, reviewed design change:
 
 - Bind the sidecar only to `127.0.0.1`.
 - Generate a fresh random bearer token for every desktop session.
+- Allow browser requests only from exact Tauri origins. Production permits
+  `http://tauri.localhost` and `tauri://localhost`; debug builds additionally
+  permit the fixed Vite origins. Never restore a wildcard CORS origin.
 - Require authentication for `/health`, `/api/models`, and `/api/chat`.
 - Do not persist the bearer token or expose it in logs.
 - Keep the renderer free of arbitrary shell and filesystem capabilities.
@@ -147,21 +154,27 @@ Preserve these unless there is an explicit, reviewed design change:
 - Do not perform filesystem writes from chat output. Future workspace edits must
   use previewable diffs and explicit user approval.
 
-The current sidecar returns `Access-Control-Allow-Origin: *`. Authentication and
-loopback binding are the primary controls today. Tightening origin validation is
-a recommended hardening task before broader distribution.
+Requests without an `Origin` remain supported for native diagnostics. A request
+with any other browser origin is rejected before bearer authentication, and the
+sidecar echoes an allowlisted origin rather than returning a wildcard.
 
 ## 6. Runtime configuration and data
 
 Defaults:
 
-- llama-server URL: `http://127.0.0.1:8080`
+- llama-server URL: a random Rust-owned loopback port for managed mode
 - model root: `~/.local/share/localforge-ai-v2/models`
 - WebKit/app profile: `~/.local/share/io.localforge.LocalForgeAI.v2`
 
 The model endpoint recursively discovers `.gguf` files and excludes projector
 files. A healthy sidecar with no llama-server returns a successful health
 response with `llamaReachable: false`; this is not a sidecar failure.
+
+The runtime executable lookup order is `LOCALFORGE_LLAMA_SERVER_BIN`, `PATH`,
+the two known v1 source runtime builds on this development host, then
+`/usr/local/bin` and `/usr/bin`. The release bundle does not yet include
+llama.cpp. `LOCALFORGE_API_URL` selects an externally owned inference endpoint
+and intentionally disables managed load/unload commands.
 
 Local search checks these conventional locations when present:
 
@@ -196,6 +209,7 @@ npm ci
 npm run build
 npm run sidecar:prepare
 cargo check --manifest-path src-tauri/Cargo.toml
+cargo test --manifest-path src-tauri/Cargo.toml --lib
 git diff --check
 ```
 
@@ -282,9 +296,8 @@ not the AppImage artifact.
 
 ## 10. Known limitations and failure modes
 
-- No built-in `llama-server` lifecycle or model loading yet.
-- No model load, unload, or `llama-server` supervision yet. Download and local
-  import are implemented.
+- Managed model load, unload, switch, and shutdown cleanup are implemented, but
+  llama.cpp is not bundled yet and runtime tuning is not exposed in Settings.
 - Settings currently covers temperature and maximum tokens only; changing the
   inference endpoint still requires `LOCALFORGE_API_URL` before launch.
 - Workspace access is explicit, read-only WebView file selection. It does not
@@ -306,15 +319,15 @@ desktop boundary, renderer state, tests, and empty/error handling together.
 
 Continue the migration in this order unless the user changes priorities:
 
-1. Add inference endpoint settings and restart/reconnect behavior.
-2. Add model selection plus `llama-server` load/unload and lifecycle management
-   (discovery, import, and download are already implemented).
-3. Replace the session-only workspace picker with a narrow native explorer,
+1. Package or install a verified llama.cpp runtime and add conservative runtime
+   tuning plus inference endpoint settings.
+2. Replace the session-only workspace picker with a narrow native explorer,
    then add diff preview and approved writes.
+3. Add MCP registry IDs, Rust-owned process spawning, permissions, limits, and
+   audit logging; keep protocol orchestration in Python.
 4. Add RAG and semantic caching.
-5. Add MCP permissions and audit logging.
-6. Add image and audio workflows.
-7. Add the embedded editor and multi-agent features.
+5. Add image and audio workflows.
+6. Add the embedded editor and multi-agent features.
 
 For each phase, keep the default experience sparse and truthful. A feature that
 has no configured data should explain what is missing in one short empty state,

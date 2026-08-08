@@ -7,9 +7,11 @@ LocalForge AI v2 คือ desktop workspace รุ่นใหม่สำห�
 > Repository นี้แยกจาก LocalForge AI v1 โดยสมบูรณ์ การพัฒนาและติดตั้ง v2
 > จะไม่แก้ไขไฟล์ของแอป CustomTkinter รุ่นเดิม
 
-## สถานะ
+## สถานะ: Preview
 
-รุ่น `0.1.0` เป็น foundation ที่ใช้งานได้สำหรับการพัฒนาต่อ ประกอบด้วย:
+รุ่น `0.2.0` ยังเป็น **Preview** สำหรับพัฒนาและทดลองใช้แยกจาก v1 ยังไม่แนะนำ
+ให้ย้ายงานหลักจาก v1 จนกว่าจะผ่านเกณฑ์ 1.0 ใน
+[`ROADMAP.md`](ROADMAP.md) ความสามารถที่ทำงานจริงในรุ่นนี้ประกอบด้วย:
 
 - responsive IDE-style desktop UI พร้อม title bar, model toolbar, workspace
   explorer, Chat และ Context Inspector
@@ -25,12 +27,23 @@ LocalForge AI v2 คือ desktop workspace รุ่นใหม่สำห�
 - Model Manager แสดงไฟล์ GGUF จริง ดาวน์โหลดจาก Hugging Face พร้อม progress
   และค้นหาโมเดลจากตำแหน่งมาตรฐานรวมถึง `~/LocalForge-AI/models`
   เพื่อนำเข้า v2 ได้
+- Model Manager สั่งโหลด หยุด และสลับโมเดลใน managed model root ผ่าน
+  `llama-server` ที่ Rust เป็นผู้ดูแล process lifecycle
+- loopback API ใช้ CORS allowlist เฉพาะ origin ของ Tauri และปฏิเสธ browser
+  origin อื่นก่อนตรวจ bearer token
 - Python unit tests และ GitHub Actions
 
 ยังไม่ใช่ feature parity กับ v1 โดย MCP Center และ Diff View ยังเป็น
-presentation layer ที่เตรียมไว้เชื่อม backend ส่วน Model Manager ยังไม่สามารถ
-สั่งโหลดโมเดลเข้า `llama-server` และ workspace ยังไม่เขียนไฟล์ ฟีเจอร์ RAG,
-multimodal และ embedded IDE จะย้ายเข้ามาทีละส่วน
+presentation layer ที่เตรียมไว้เชื่อม backend และ workspace ยังไม่เขียนไฟล์
+ฟีเจอร์ RAG, multimodal และ embedded IDE จะย้ายเข้ามาทีละ milestone
+
+### ควรย้ายจาก v1 เมื่อใด
+
+- ตอนนี้: ใช้ v2 เพื่อทดลอง Chat, Model Manager และงาน read-only เท่านั้น
+- ก่อน 1.0: เก็บ v1 เป็นโปรแกรมหลัก เพราะ MCP, diff-approved writes, RAG,
+  multimodal และ embedded IDE ยังไม่ครบ
+- 1.0: พิจารณาย้ายเมื่อ parity checklist ผ่านและมี migration flow ที่ไม่แก้
+  หรือลบข้อมูล v1
 
 ## สถาปัตยกรรม
 
@@ -110,8 +123,10 @@ chmod +x LocalForge_AI_v2_*.AppImage
 ./LocalForge_AI_v2_*.AppImage
 ```
 
-ตัวแอปจะเชื่อม `llama-server` ที่ `http://127.0.0.1:8080` โดยค่าเริ่มต้น
-หากใช้พอร์ตอื่นให้ตั้ง `LOCALFORGE_API_URL` ก่อนเปิด AppImage
+โดยค่าเริ่มต้น Rust จะเลือก loopback port แบบสุ่มและเป็นผู้เปิด `llama-server`
+เมื่อผู้ใช้กดโหลดโมเดล ตั้ง `LOCALFORGE_LLAMA_SERVER_BIN` หาก executable ไม่ได้
+อยู่ใน `PATH` หากต้องการใช้ endpoint ภายนอกแทนให้ตั้ง `LOCALFORGE_API_URL`;
+โหมดนี้จะปิดปุ่มโหลด/หยุดโมเดลภายในแอปเพื่อไม่แย่ง ownership ของ process
 
 ## ทดสอบ
 

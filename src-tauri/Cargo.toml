@@ -1,6 +1,6 @@
 [package]
 name = "localforge-ai-v2"
-version = "0.1.0"
+version = "0.2.0"
 description = "A modern local-first AI workspace"
 authors = ["rangzacap4899-maker"]
 edition = "2021"

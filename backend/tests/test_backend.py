@@ -124,6 +124,7 @@ class BackendServerTests(unittest.TestCase):
             token="test-secret",
             llama_url="http://127.0.0.1:1",
             model_root=Path(self.temp.name),
+            allowed_origins=("http://tauri.localhost",),
         )
         self.server = create_server(config)
         self.server.model_operations.search_roots = [
@@ -168,6 +169,42 @@ class BackendServerTests(unittest.TestCase):
             payload = json.load(response)
         self.assertEqual(payload["status"], "ok")
         self.assertFalse(payload["llamaReachable"])
+
+    def test_allows_only_the_configured_tauri_origin(self) -> None:
+        request = self.request("/health")
+        request.add_header("Origin", "http://tauri.localhost")
+        with urllib.request.urlopen(request, timeout=2) as response:
+            self.assertEqual(
+                response.headers["Access-Control-Allow-Origin"],
+                "http://tauri.localhost",
+            )
+            self.assertNotEqual(response.headers["Access-Control-Allow-Origin"], "*")
+
+    def test_rejects_an_untrusted_browser_origin_before_auth(self) -> None:
+        request = self.request("/health")
+        request.add_header("Origin", "https://untrusted.example")
+        with self.assertRaises(urllib.error.HTTPError) as context:
+            urllib.request.urlopen(request, timeout=2)
+        self.assertEqual(context.exception.code, 403)
+        self.assertIsNone(context.exception.headers.get("Access-Control-Allow-Origin"))
+        context.exception.close()
+
+    def test_preflight_echoes_only_an_allowed_origin(self) -> None:
+        request = urllib.request.Request(
+            self.base_url + "/api/models",
+            headers={
+                "Origin": "http://tauri.localhost",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "authorization",
+            },
+            method="OPTIONS",
+        )
+        with urllib.request.urlopen(request, timeout=2) as response:
+            self.assertEqual(response.status, 204)
+            self.assertEqual(
+                response.headers["Access-Control-Allow-Origin"],
+                "http://tauri.localhost",
+            )
 
     def test_models_endpoint_returns_discovered_models(self) -> None:
         (Path(self.temp.name) / "local-Q4.gguf").write_bytes(b"weights")

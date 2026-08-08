@@ -1,6 +1,6 @@
-import { AlertCircle, Box, CheckCircle2, Download, FolderInput, HardDrive, RefreshCw, Search, X } from "lucide-react";
+import { AlertCircle, Box, CheckCircle2, Download, FolderInput, HardDrive, Play, RefreshCw, Search, Square, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import type { LocalModelCandidate, ModelDownload, ModelInfo } from "../types";
+import type { LocalModelCandidate, ModelDownload, ModelInfo, ModelRuntimeStatus } from "../types";
 
 interface ModelsViewProps {
   models: ModelInfo[];
@@ -11,10 +11,14 @@ interface ModelsViewProps {
   searched: boolean;
   actionId: string;
   error: string;
+  runtime: ModelRuntimeStatus;
+  llamaOnline: boolean;
   onRefresh: () => void;
   onSearch: () => void;
   onImport: (id: string) => void;
   onDownload: (url: string, fileName: string) => void;
+  onLoad: (id: string) => void;
+  onUnload: () => void;
 }
 
 const formatBytes = (value: number) => {
@@ -23,7 +27,7 @@ const formatBytes = (value: number) => {
   return `${(value / 1024 ** 3).toFixed(2)} GB`;
 };
 
-export function ModelsView({ models, candidates, downloads, loading, searching, searched, actionId, error, onRefresh, onSearch, onImport, onDownload }: ModelsViewProps) {
+export function ModelsView({ models, candidates, downloads, loading, searching, searched, actionId, error, runtime, llamaOnline, onRefresh, onSearch, onImport, onDownload, onLoad, onUnload }: ModelsViewProps) {
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [fileName, setFileName] = useState("");
@@ -86,11 +90,18 @@ export function ModelsView({ models, candidates, downloads, loading, searching, 
           {models.length > 0 ? (
             <div className="model-grid clean-model-grid">
               {models.map((model) => (
-                <article className="model-card" key={model.id}>
-                  <header><span><Box size={16} /></span><em>พร้อมใช้งาน</em></header>
+                <article className={`model-card ${runtime.modelId === model.id ? "runtime-active" : ""}`} key={model.id}>
+                  <header><span><Box size={16} /></span><em>{runtime.modelId === model.id ? llamaOnline ? "กำลังใช้งาน" : "กำลังเริ่ม" : "พร้อมโหลด"}</em></header>
                   <h2 title={model.name}>{model.name}</h2>
                   <code title={model.id}>{model.id}</code>
-                  <footer><span>{formatBytes(model.sizeBytes)}</span></footer>
+                  <footer>
+                    <span>{formatBytes(model.sizeBytes)}</span>
+                    {runtime.managed && (runtime.modelId === model.id ? (
+                      <button className="model-runtime-stop" onClick={onUnload} disabled={actionId === "runtime:unload"}><Square size={10} />{actionId === "runtime:unload" ? "กำลังหยุด" : "หยุด"}</button>
+                    ) : (
+                      <button onClick={() => onLoad(model.id)} disabled={actionId.startsWith("runtime:")}><Play size={10} />{actionId === `runtime:${model.id}` ? "กำลังโหลด" : "โหลด"}</button>
+                    ))}
+                  </footer>
                 </article>
               ))}
             </div>

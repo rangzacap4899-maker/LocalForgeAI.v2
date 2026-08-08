@@ -11,9 +11,16 @@ class BackendConfig:
     token: str
     llama_url: str
     model_root: Path
+    allowed_origins: tuple[str, ...] = ()
 
     @classmethod
-    def create(cls, port: int, token: str, llama_url: str) -> "BackendConfig":
+    def create(
+        cls,
+        port: int,
+        token: str,
+        llama_url: str,
+        allowed_origins: tuple[str, ...] = (),
+    ) -> "BackendConfig":
         configured_root = os.environ.get("LOCALFORGE_V2_MODEL_ROOT")
         model_root = (
             Path(configured_root).expanduser()
@@ -26,4 +33,5 @@ class BackendConfig:
             token=token,
             llama_url=llama_url.rstrip("/"),
             model_root=model_root.resolve(),
+            allowed_origins=allowed_origins,
         )
